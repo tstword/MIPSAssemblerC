@@ -408,11 +408,6 @@ token_t return_token(token_t token, struct tokenizer *tokenizer) {
                 }
             }
 
-            if(value > 4294967295 || value < 0) {
-                report_fsm(tokenizer, "Integer literal '%s' requires more than 32-bits with represent on line %ld", tokenizer->lexbuf, tokenizer->lineno);
-                return TOK_INVALID;
-            }
-
             //printf("INTEGER FOUND: %d\n", tokenizer->attrval);
             return token;
         }
