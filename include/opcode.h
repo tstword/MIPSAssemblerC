@@ -65,6 +65,11 @@ typedef unsigned int mnemonic_t;
 #define MNEMONIC_LI       0x2A
 #define MNEMONIC_LA       0x2B
 #define MNEMONIC_NOT      0x2C
+#define MNEMONIC_BEQZ     0x2D
+#define MNEMONIC_BGE      0x2E
+#define MNEMONIC_BLE      0x2F
+#define MNEMONIC_BNEZ     0x30
+#define MNEMONIC_BLT      0x31
 
 /* opcode type flags */
 #define OPTYPE_DEFAULT    0x0
@@ -75,7 +80,8 @@ struct opcode_entry {
     unsigned char opcode;           /* Instruction opcode */
     unsigned char funct;            /* Instruction funct */
     unsigned char rt;               /* Used for specific instructions like BGEZAL */
-    unsigned char psuedo;           /* Flag used to indicate psuedo instructions */
+    unsigned char psuedo : 1;       /* Flag used to indicate psuedo instructions */
+	unsigned char size   : 7;       /* If psuedo is 1, we need the size of the instruction */
 };
 
 /* global reference to opcode table */

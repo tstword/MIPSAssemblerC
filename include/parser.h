@@ -56,6 +56,8 @@ struct parser {
 
     struct program_node *ast;           /* Root of the abstract syntax tree */
     
+    segment_t segment;                  /* Indication of current segment */
+
     token_t lookahead;                  /* Required for LL(1) grammar */
     pstatus_t status;                   /* Indicates the status of the parser */
     

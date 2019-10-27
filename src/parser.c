@@ -70,10 +70,13 @@ void label_cfg() {
         match_cfg(TOK_IDENTIFIER);
         if(cfg_parser->lookahead == TOK_COLON) {
             match_cfg(TOK_COLON);
-            if(get_symbol_table(symbol_table, id) != NULL)
+            if(get_symbol_table(symbol_table, id) != NULL) {
                 report_cfg("Multiple definitions of label '%s' on line %ld, col %ld", id, cfg_parser->lineno, cfg_parser->colno);
-            else 
-                insert_symbol_table(symbol_table, id)->value.offset = cfg_parser->LC;
+            } else { 
+                struct symbol_table_entry *entry = insert_symbol_table(symbol_table, id);
+                entry->value.offset = cfg_parser->LC;
+                entry->value.segment = cfg_parser->segment;
+            }
         } else {
             report_cfg("Unrecognized mnemonic '%s' on line %ld, col %ld", id, cfg_parser->lineno, cfg_parser->colno);
         }
@@ -180,7 +183,11 @@ struct instruction_node *instruction_cfg() {
                     default:
                         node->operand_list = NULL;
                 }
-                cfg_parser->LC += 0x8;
+				if(node->mnemonic->psuedo) {
+                	cfg_parser->LC += node->mnemonic->size;
+				} else {
+					cfg_parser->LC += 0x4;
+				}
             }
             end_line_cfg();
             break;
@@ -199,7 +206,11 @@ struct instruction_node *instruction_cfg() {
                     node->operand_list = NULL;
             }
             end_line_cfg();
-            cfg_parser->LC += 0x8;
+            if(node->mnemonic->psuedo) {
+				cfg_parser->LC += node->mnemonic->size;
+			} else {
+				cfg_parser->LC += 0x4;
+			}
             break;
         case TOK_EOL:
         case TOK_NULL:
@@ -239,8 +250,9 @@ struct parser *create_parser(struct tokenizer *tk) {
     parser->status = PARSER_STATUS_NULL;
     parser->lineno = 1;
     parser->colno = 1;
-    parser->LC = 0x00400000;
+    parser->LC = 0x00000000;
     parser->ast = NULL;
+    parser->segment = SEGMENT_TEXT;
     
     return parser;
 }

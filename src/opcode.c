@@ -49,10 +49,15 @@ struct opcode_entry opcode_table[] = {
     { 0x0B, 0x00, 0x00, OPTYPE_DEFAULT }, /* MNEMONIC_SLTIU */
     { 0x0E, 0x00, 0x00, OPTYPE_DEFAULT }, /* MNEMONIC_XORI */
     /* Psuedo instructions */
-    { 0x00, 0x00, 0x00, OPTYPE_PSUEDO  }, /* MNEMONIC_MOVE */
-    { 0x01, 0x00, 0x00, OPTYPE_PSUEDO  }, /* MNEMONIC_LI */
-    { 0x02, 0x00, 0x00, OPTYPE_PSUEDO  }, /* MNEMONIC_LA */
-    { 0x03, 0x00, 0x00, OPTYPE_PSUEDO  }  /* MNEMONIC_NOT */
+    { 0x00, 0x00, 0x00, OPTYPE_PSUEDO, 0x4 }, /* MNEMONIC_MOVE */
+    { 0x01, 0x00, 0x00, OPTYPE_PSUEDO, 0x4 }, /* MNEMONIC_LI */
+    { 0x02, 0x00, 0x00, OPTYPE_PSUEDO, 0x8 }, /* MNEMONIC_LA */
+    { 0x03, 0x00, 0x00, OPTYPE_PSUEDO, 0x4 }, /* MNEMONIC_NOT */
+    { 0x04, 0x00, 0x00, OPTYPE_PSUEDO, 0x4 }, /* MNEMONIC_BEQZ */
+    { 0x05, 0x00, 0x00, OPTYPE_PSUEDO, 0x8 }, /* MNEMONIC_BGE */
+    { 0x06, 0x00, 0x00, OPTYPE_PSUEDO, 0x8 }, /* MNEMONIC_BLE */
+    { 0x07, 0x00, 0x00, OPTYPE_PSUEDO, 0x4 }, /* MNEMONIC_BNEZ */
+    { 0x08, 0x00, 0x00, OPTYPE_PSUEDO, 0x8 }  /* MNEMONIC_BLT */
 };
 
 const size_t opcode_table_size = sizeof(opcode_table) / sizeof(opcode_table[0]);

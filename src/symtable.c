@@ -120,7 +120,7 @@ void print_symbol_table(struct symbol_table *symtab) {
         struct symbol_table_entry *head = symtab->buckets[i];
         if(head != NULL) ++bucketsUsed;
         while(head != NULL) {
-            printf("[ %-14s | 0x%08X | 0x%02X | 0x%02X ]---> ", head->key, head->value.offset, head->value.segment, head->value.datasize);
+            printf("[ %-20s | 0x%08X | 0x%02X | 0x%02X ]---> ", head->key, head->value.offset, head->value.segment, head->value.datasize);
             if(head->next == NULL) printf("\n");
             head = head->next;
         }
