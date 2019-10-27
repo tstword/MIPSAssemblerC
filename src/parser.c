@@ -83,22 +83,45 @@ void label_cfg() {
     }
 }
 
-void operand_cfg() {
+struct operand_node *operand_cfg() {
+    struct operand_node *node = NULL;
+
     switch(cfg_parser->lookahead) {
-        case TOK_REGISTER:
+        case TOK_REGISTER: {
+            int value = cfg_parser->tokenizer->attrval;
             match_cfg(TOK_REGISTER);
+            node = malloc(sizeof(struct operand_node));
+            node->operand = OPERAND_REGISTER;
+            node->value.reg = value;
+            node->next = NULL;
             break;
-        case TOK_IDENTIFIER:
+        }
+        case TOK_IDENTIFIER: {
+            char *id = strdup(cfg_parser->tokenizer->lexbuf);
             match_cfg(TOK_IDENTIFIER);
+            node = malloc(sizeof(struct operand_node));
+            node->operand = OPERAND_IDENTIFIER;
+            node->identifier = id;
+            node->next = NULL;
             break;
-        case TOK_INTEGER:
+        }
+        case TOK_INTEGER: {
+            int value = cfg_parser->tokenizer->attrval;
             match_cfg(TOK_INTEGER);
+            node = malloc(sizeof(struct operand_node));
+            node->operand = OPERAND_INTEGER;
+            node->value.integer = value;
+            node->next = NULL;
             if(cfg_parser->lookahead == TOK_LPAREN) {
-                if(!(match_cfg(TOK_LPAREN) && 
-                     match_cfg(TOK_REGISTER) && 
-                     match_cfg(TOK_RPAREN))) break;
+                match_cfg(TOK_LPAREN);
+                int reg_value = cfg_parser->tokenizer->attrval;
+                if(match_cfg(TOK_REGISTER) && match_cfg(TOK_RPAREN)) {
+                    node->operand = OPERAND_ADDRESS;
+                    node->value.reg = reg_value;
+                }
             }
             break;
+        }
 		case TOK_EOL:
 		case TOK_NULL:
 			report_cfg("Expected operand after line %ld, col %ld", cfg_parser->lineno, cfg_parser->colno);
@@ -106,17 +129,24 @@ void operand_cfg() {
         default:
             report_cfg("Invalid operand '%s' on line %ld, col %ld", cfg_parser->tokenizer->lexbuf, cfg_parser->lineno, cfg_parser->colno);
     }
+    
+    return node;
 }
 
-void operand_list_cfg() {
+struct operand_node *operand_list_cfg() {
+    struct operand_node *node = NULL;
+
     switch(cfg_parser->lookahead) {
         case TOK_REGISTER:
         case TOK_IDENTIFIER:
         case TOK_INTEGER:
-            operand_cfg();
+            node = operand_cfg();
             if(cfg_parser->lookahead == TOK_COMMA) {
                 match_cfg(TOK_COMMA);
-                operand_list_cfg();
+                if(node != NULL)
+                    node->next = operand_list_cfg();
+                else
+                    node = operand_list_cfg();
             }
             break;
 		case TOK_EOL:
@@ -126,26 +156,47 @@ void operand_list_cfg() {
         default:
             report_cfg("Invalid operand '%s' on line %ld, col %ld", cfg_parser->tokenizer->lexbuf, cfg_parser->lineno, cfg_parser->colno);
     }
+
+    return node;
 }
 
-void instruction_cfg() {
+struct instruction_node *instruction_cfg() {
+    struct instruction_node *node = NULL;
+
     switch(cfg_parser->lookahead) {
         case TOK_IDENTIFIER:
             label_cfg();
             if(cfg_parser->lookahead == TOK_MNEMONIC) {
+                node = malloc(sizeof(struct instruction_node));
+                node->mnemonic = cfg_parser->tokenizer->attrptr;
+                node->next = NULL;
                 match_cfg(TOK_MNEMONIC);
-                operand_list_cfg();
+                switch(cfg_parser->lookahead) {
+                    case TOK_IDENTIFIER:
+                    case TOK_INTEGER:
+                    case TOK_REGISTER:
+                        node->operand_list = operand_list_cfg();
+                        break;
+                    default:
+                        node->operand_list = NULL;
+                }
                 cfg_parser->LC += 0x8;
             }
             end_line_cfg();
             break;
         case TOK_MNEMONIC:
+            node = malloc(sizeof(struct instruction_node));
+            node->mnemonic = cfg_parser->tokenizer->attrptr;
+            node->next = NULL;
             match_cfg(TOK_MNEMONIC);
             switch(cfg_parser->lookahead) {
                 case TOK_IDENTIFIER:
                 case TOK_INTEGER:
                 case TOK_REGISTER:
-                    operand_list_cfg();
+                    node->operand_list = operand_list_cfg();
+                    break;
+                default:
+                    node->operand_list = NULL;
             }
             end_line_cfg();
             cfg_parser->LC += 0x8;
@@ -157,18 +208,27 @@ void instruction_cfg() {
         default:
             report_cfg("Unexpected %s on line %ld, col %ld", get_token_str(cfg_parser->lookahead), cfg_parser->lineno, cfg_parser->colno);
     }
+
+    return node;
 }
 
-void instruction_list_cfg() {
+struct instruction_node *instruction_list_cfg() {
+    struct instruction_node *node = NULL;
     if(cfg_parser->lookahead != TOK_NULL) {
-        instruction_cfg();
-        instruction_list_cfg();
+        node = instruction_cfg();
+        if(node != NULL)
+            node->next = instruction_list_cfg();
+        else
+            node = instruction_list_cfg();
     }
+    return node;
 }
 
-void program_cfg(struct parser *parser) {
+struct program_node *program_cfg(struct parser *parser) {
     cfg_parser = parser;
-    instruction_list_cfg();
+    struct program_node *node = malloc(sizeof(struct program_node));
+    node->instruction_list = instruction_list_cfg();
+    return node;
 }
 
 struct parser *create_parser(struct tokenizer *tk) {
@@ -180,6 +240,7 @@ struct parser *create_parser(struct tokenizer *tk) {
     parser->lineno = 1;
     parser->colno = 1;
     parser->LC = 0x00400000;
+    parser->ast = NULL;
     
     return parser;
 }
@@ -189,7 +250,8 @@ pstatus_t execute_parser(struct parser *parser) {
     parser->lookahead = get_next_token(parser->tokenizer);
     
     /* Start grammar recognization... */
-    program_cfg(parser);
+    parser->ast = program_cfg(parser);
+    //program_cfg(parser);
 
     if(parser->status == PARSER_STATUS_NULL) {
         parser->status = PARSER_STATUS_OK;
@@ -199,6 +261,26 @@ pstatus_t execute_parser(struct parser *parser) {
 }
 
 void destroy_parser(struct parser **parser) {
+    /* Destory AST */
+    struct instruction_node *instr_node = (*parser)->ast ? (*parser)->ast->instruction_list : NULL;
+    /* Free instructions */
+    while(instr_node != NULL) {
+        struct instruction_node *next_instr = instr_node->next;
+        /* Free operands */
+        struct operand_node *op_node = instr_node->operand_list;
+        while(op_node != NULL) {
+            struct operand_node *next_op = op_node->next;
+            if(op_node->operand == OPERAND_IDENTIFIER) free(op_node->identifier);
+            free(op_node);
+            op_node = next_op;
+        }
+        free(instr_node);
+        instr_node = next_instr;
+    }
+
+    /* Free AST */
+    free((*parser)->ast);
+
     /* Simple free the data */
     free(*parser);
 

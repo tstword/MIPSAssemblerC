@@ -7,17 +7,54 @@
 
 #include "tokenizer.h"
 #include "symtable.h"
+#include "opcode.h"
 
 /* Marco definition */
 #define PARSER_STATUS_NULL 0x0
 #define PARSER_STATUS_OK   0x1
 #define PARSER_STATUS_FAIL 0x2
 
+#define OPERAND_REGISTER   0x0
+#define OPERAND_INTEGER    0x1
+#define OPERAND_IDENTIFIER 0x2
+#define OPERAND_ADDRESS    0x3
+
+typedef unsigned char operand_t;
 typedef unsigned char pstatus_t;
+
+/* Abstract syntax tree */
+struct mnemonic_node {
+    mnemonic_t mnemonic;
+    struct opcode_entry *entry;
+};
+
+struct operand_node {
+    operand_t operand;
+    union {
+        char *identifier;
+        struct { 
+            uint64_t integer : 32;
+            uint64_t reg : 32;
+        } value;
+    };
+    struct operand_node *next;
+};
+
+struct instruction_node {
+    struct opcode_entry *mnemonic;
+    struct operand_node *operand_list;
+    struct instruction_node *next;
+};
+
+struct program_node {
+    struct instruction_node *instruction_list;
+};
 
 /* Parser structure definition */
 struct parser {
     struct tokenizer *tokenizer;        /* Pointer to tokenizer */
+
+    struct program_node *ast;           /* Root of the abstract syntax tree */
     
     token_t lookahead;                  /* Required for LL(1) grammar */
     pstatus_t status;                   /* Indicates the status of the parser */
@@ -27,7 +64,6 @@ struct parser {
     size_t lineno;                      /* Line number of where the tokenizer last left off */
     size_t colno;                       /* Column number of where the tokenizer last left off */
 };
-
 
 /* Function prototypes */
 struct parser *create_parser(struct tokenizer *);
