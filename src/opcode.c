@@ -52,7 +52,7 @@ struct opcode_entry opcode_table[] = {
     { 0x00, 0x00, 0x00, OPTYPE_PSUEDO  }, /* MNEMONIC_MOVE */
     { 0x01, 0x00, 0x00, OPTYPE_PSUEDO  }, /* MNEMONIC_LI */
     { 0x02, 0x00, 0x00, OPTYPE_PSUEDO  }, /* MNEMONIC_LA */
-    { 0x03, 0x00, 0x00, OPTYPE_PSUEDO  } /* MNEMONIC_NOT */
+    { 0x03, 0x00, 0x00, OPTYPE_PSUEDO  }  /* MNEMONIC_NOT */
 };
 
 const size_t opcode_table_size = sizeof(opcode_table) / sizeof(opcode_table[0]);

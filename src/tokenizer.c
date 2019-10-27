@@ -315,8 +315,9 @@ state_fsm comment_fsm(struct tokenizer *tokenizer) {
             tungetc(ch, tokenizer);
             return comment_accept;
         case '\n':
-            tokenizer->lineno++;
-            tokenizer->colno = 1;
+            //tokenizer->lineno++;
+            //tokenizer->colno = 1;
+            tungetc(ch, tokenizer);
             return comment_accept;
         default:
             return comment_state;

@@ -6,6 +6,7 @@
 #include "tokenizer.h"
 #include "parser.h"
 #include "symtable.h"
+#include "opcode.h"
 
 struct symbol_table *symbol_table;
 
@@ -56,6 +57,11 @@ void printToken(token_t token, struct tokenizer *tokenizer) {
     }
     if(token != TOK_EOL) printf("    Buffer: \"%s\"\n", tokenizer->lexbuf);
     else printf("    Buffer: \"\\n\"\n");
+
+    if(token == TOK_MNEMONIC) {
+        struct opcode_entry *entry = (struct opcode_entry *)tokenizer->attrptr;
+        printf("[ %d | %d | %d | %d ]\n", entry->opcode, entry->funct, entry->rt, entry->psuedo);
+    }
 }
 
 int main(int argc, char *argv[]) {

@@ -68,9 +68,14 @@ void label_cfg() {
     if(cfg_parser->lookahead == TOK_IDENTIFIER) {
         char *id = strdup(cfg_parser->tokenizer->lexbuf);
         match_cfg(TOK_IDENTIFIER);
-        if(match_cfg(TOK_COLON)) {
-            if(get_symbol_table(symbol_table, id) != NULL) report_cfg("Multiple definitions of label '%s' on line %ld, col %ld", id, cfg_parser->lineno, cfg_parser->colno);
-            else insert_symbol_table(symbol_table, id)->value.offset = cfg_parser->LC;
+        if(cfg_parser->lookahead == TOK_COLON) {
+            match_cfg(TOK_COLON);
+            if(get_symbol_table(symbol_table, id) != NULL)
+                report_cfg("Multiple definitions of label '%s' on line %ld, col %ld", id, cfg_parser->lineno, cfg_parser->colno);
+            else 
+                insert_symbol_table(symbol_table, id)->value.offset = cfg_parser->LC;
+        } else {
+            report_cfg("Unrecognized mnemonic '%s' on line %ld, col %ld", id, cfg_parser->lineno, cfg_parser->colno);
         }
         free(id);
     } else {

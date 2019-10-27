@@ -27,7 +27,7 @@ struct symbol_table *create_symbol_table() {
     return symtab;
 }
 
-void insertAtIndex_symbol_table(struct symbol_table *symtab, size_t index, struct symbol_table_entry *entry) {
+void insert_at_index_st(struct symbol_table *symtab, size_t index, struct symbol_table_entry *entry) {
     struct symbol_table_entry *head = symtab->buckets[index];
     ++symtab->length;
     if(head == NULL) {
@@ -49,7 +49,7 @@ struct symbol_table_entry *insert_symbol_table(struct symbol_table *symtab, cons
 
     size_t index = djb2hash(key) % symtab->bucket_size;
 
-    insertAtIndex_symbol_table(symtab, index, item);
+    insert_at_index_st(symtab, index, item);
     
     if(((float)symtab->length) / symtab->bucket_size >= 0.7f) {
         struct symbol_table_entry **old_buckets = symtab->buckets;
@@ -66,7 +66,7 @@ struct symbol_table_entry *insert_symbol_table(struct symbol_table *symtab, cons
                 struct symbol_table_entry *next_head = head->next;
                 head->next = NULL;
                 index = djb2hash(head->key) % symtab->bucket_size;
-                insertAtIndex_symbol_table(symtab, index, head);
+                insert_at_index_st(symtab, index, head);
                 head = next_head;
             }
         }
@@ -85,9 +85,6 @@ struct symbol_table_attr *get_symbol_table(struct symbol_table *symtab, const ch
         if(strcmp(key, head->key) == 0) return &(head->value);
         head = head->next;
     }
-
-    // fprintf(stderr, "HashTable: Entry in hashtable with key '%s' does not exist.\n", key);
-    // exit(-1);
 
     return NULL;
 }
