@@ -103,7 +103,7 @@ struct operand_node *operand_cfg() {
             char *id = strdup(cfg_parser->tokenizer->lexbuf);
             match_cfg(TOK_IDENTIFIER);
             node = malloc(sizeof(struct operand_node));
-            node->operand = OPERAND_IDENTIFIER;
+            node->operand = OPERAND_LABEL;
             node->identifier = id;
             node->next = NULL;
             break;
@@ -112,7 +112,7 @@ struct operand_node *operand_cfg() {
             int value = cfg_parser->tokenizer->attrval;
             match_cfg(TOK_INTEGER);
             node = malloc(sizeof(struct operand_node));
-            node->operand = OPERAND_INTEGER;
+            node->operand = OPERAND_IMMEDIATE;
             node->value.integer = value;
             node->next = NULL;
             if(cfg_parser->lookahead == TOK_LPAREN) {
@@ -163,6 +163,25 @@ struct operand_node *operand_list_cfg() {
     return node;
 }
 
+void verify_instruction(struct instruction_node *instr) {
+    if(instr == NULL || instr->mnemonic == NULL) return;
+
+    /* Verify operand list */
+    struct operand_node *operand = instr->operand_list;
+    for(int i = 0; i < 3; ++i) {
+        if(((struct opcode_entry *)instr->mnemonic->attrptr)->operand[i] == OPERAND_NONE) {
+            if(operand != NULL) report_cfg("Instruction '%s' takes too many operands on line %ld", instr->mnemonic->id, cfg_parser->lineno);
+            break;
+        } else {
+            if(operand == NULL || (((struct opcode_entry *)instr->mnemonic->attrptr)->operand[i] & operand->operand) == 0) {
+                report_cfg("Invalid operand combiniation for instruction '%s' on line %ld", instr->mnemonic->id, cfg_parser->lineno);
+                break;
+            }
+        }
+        operand = operand->next;
+    }
+}
+
 struct instruction_node *instruction_cfg() {
     struct instruction_node *node = NULL;
 
@@ -183,8 +202,8 @@ struct instruction_node *instruction_cfg() {
                     default:
                         node->operand_list = NULL;
                 }
-				if(node->mnemonic->psuedo) {
-                	cfg_parser->LC += node->mnemonic->size;
+				if(((struct opcode_entry *)node->mnemonic->attrptr)->psuedo) {
+                	cfg_parser->LC += ((struct opcode_entry *)node->mnemonic->attrptr)->size;
 				} else {
 					cfg_parser->LC += 0x4;
 				}
@@ -206,8 +225,8 @@ struct instruction_node *instruction_cfg() {
                     node->operand_list = NULL;
             }
             end_line_cfg();
-            if(node->mnemonic->psuedo) {
-				cfg_parser->LC += node->mnemonic->size;
+            if(((struct opcode_entry *)node->mnemonic->attrptr)->psuedo) {
+				cfg_parser->LC += ((struct opcode_entry *)node->mnemonic->attrptr)->size;
 			} else {
 				cfg_parser->LC += 0x4;
 			}
@@ -219,6 +238,8 @@ struct instruction_node *instruction_cfg() {
         default:
             report_cfg("Unexpected %s on line %ld, col %ld", get_token_str(cfg_parser->lookahead), cfg_parser->lineno, cfg_parser->colno);
     }
+
+    verify_instruction(node);
 
     return node;
 }
@@ -282,7 +303,7 @@ void destroy_parser(struct parser **parser) {
         struct operand_node *op_node = instr_node->operand_list;
         while(op_node != NULL) {
             struct operand_node *next_op = op_node->next;
-            if(op_node->operand == OPERAND_IDENTIFIER) free(op_node->identifier);
+            if(op_node->operand == OPERAND_LABEL) free(op_node->identifier);
             free(op_node);
             op_node = next_op;
         }

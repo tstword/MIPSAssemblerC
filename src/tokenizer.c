@@ -91,6 +91,7 @@ struct reserved_entry reserved_table[] = {
     { "bge"     , TOK_MNEMONIC, opcode_table + MNEMONIC_BGE     },
     { "bgez"    , TOK_MNEMONIC, opcode_table + MNEMONIC_BGEZ    },
     { "bgezal"  , TOK_MNEMONIC, opcode_table + MNEMONIC_BGEZAL  },
+    { "bgt"     , TOK_MNEMONIC, opcode_table + MNEMONIC_BGT     },
     { "bgtz"    , TOK_MNEMONIC, opcode_table + MNEMONIC_BGTZ    },
     { "ble"     , TOK_MNEMONIC, opcode_table + MNEMONIC_BLE     },
     { "blez"    , TOK_MNEMONIC, opcode_table + MNEMONIC_BLEZ    },
@@ -99,6 +100,8 @@ struct reserved_entry reserved_table[] = {
     { "bltzal"  , TOK_MNEMONIC, opcode_table + MNEMONIC_BLTZAL  },
     { "bne"     , TOK_MNEMONIC, opcode_table + MNEMONIC_BNE     },
     { "bnez"    , TOK_MNEMONIC, opcode_table + MNEMONIC_BNEZ    },
+    { "div"     , TOK_MNEMONIC, opcode_table + MNEMONIC_DIV     },
+    { "divu"    , TOK_MNEMONIC, opcode_table + MNEMONIC_DIVU    },
     { "j"       , TOK_MNEMONIC, opcode_table + MNEMONIC_JMP     },
     { "jal"     , TOK_MNEMONIC, opcode_table + MNEMONIC_JAL     },
     { "jr"      , TOK_MNEMONIC, opcode_table + MNEMONIC_JR      },
@@ -110,7 +113,11 @@ struct reserved_entry reserved_table[] = {
     { "li"      , TOK_MNEMONIC, opcode_table + MNEMONIC_LI      },
     { "lui"     , TOK_MNEMONIC, opcode_table + MNEMONIC_LUI     },
     { "lw"      , TOK_MNEMONIC, opcode_table + MNEMONIC_LW      },
+    { "mfhi"    , TOK_MNEMONIC, opcode_table + MNEMONIC_MFHI    },
+    { "mflo"    , TOK_MNEMONIC, opcode_table + MNEMONIC_MFLO    },
     { "move"    , TOK_MNEMONIC, opcode_table + MNEMONIC_MOVE    },
+    { "mult"    , TOK_MNEMONIC, opcode_table + MNEMONIC_MULT    },
+    { "multu"   , TOK_MNEMONIC, opcode_table + MNEMONIC_MULTU   },
     { "nor"     , TOK_MNEMONIC, opcode_table + MNEMONIC_NOR     },
     { "not"     , TOK_MNEMONIC, opcode_table + MNEMONIC_NOT     },
     { "or"      , TOK_MNEMONIC, opcode_table + MNEMONIC_OR      },
@@ -385,7 +392,7 @@ token_t return_token(token_t token, struct tokenizer *tokenizer) {
             /* Perform lookup on reserved keyword table */
             if((entry = get_reserved_table(tokenizer->lexbuf)) != NULL) {
                 if(entry->token == TOK_MNEMONIC)
-                    tokenizer->attrptr = entry->attrptr;
+                    tokenizer->attrptr = entry;
                 else if(entry->token == TOK_REGISTER)
                     tokenizer->attrval = entry->attrval;
                 return entry->token;

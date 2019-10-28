@@ -14,11 +14,6 @@
 #define PARSER_STATUS_OK   0x1
 #define PARSER_STATUS_FAIL 0x2
 
-#define OPERAND_REGISTER   0x0
-#define OPERAND_INTEGER    0x1
-#define OPERAND_IDENTIFIER 0x2
-#define OPERAND_ADDRESS    0x3
-
 typedef unsigned char operand_t;
 typedef unsigned char pstatus_t;
 
@@ -41,7 +36,7 @@ struct operand_node {
 };
 
 struct instruction_node {
-    struct opcode_entry *mnemonic;
+    struct reserved_entry *mnemonic;
     struct operand_node *operand_list;
     struct instruction_node *next;
 };

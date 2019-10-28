@@ -70,6 +70,15 @@ typedef unsigned int mnemonic_t;
 #define MNEMONIC_BLE      0x2F
 #define MNEMONIC_BNEZ     0x30
 #define MNEMONIC_BLT      0x31
+#define MNEMONIC_BGT      0x32
+
+/* Instructions I forgot about... */
+#define MNEMONIC_DIV      0x33
+#define MNEMONIC_DIVU     0x34
+#define MNEMONIC_MFHI     0x35
+#define MNEMONIC_MFLO     0x36
+#define MNEMONIC_MULT     0x37
+#define MNEMONIC_MULTU    0x38
 
 /* opcode type flags */
 #define OPTYPE_DEFAULT    0x0
@@ -79,8 +88,10 @@ typedef unsigned int mnemonic_t;
 #define OPERAND_NONE       0x0
 #define OPERAND_LABEL      0x1
 #define OPERAND_IMMEDIATE  0x2
-#define OPERAND_REGISTER   0x3
-#define OPERAND_ADDRESS    0x4
+#define OPERAND_REGISTER   0x4
+#define OPERAND_ADDRESS    0x8
+
+typedef unsigned char operand_t;
 
 #define OPFORMAT_NONE           { OPERAND_NONE, OPERAND_NONE, OPERAND_NONE              }
 #define OPFORMAT_R_TYPE         { OPERAND_REGISTER, OPERAND_REGISTER, OPERAND_REGISTER  }
@@ -99,7 +110,7 @@ struct opcode_entry {
     unsigned char opcode;           /* Instruction opcode */
     unsigned char funct;            /* Instruction funct */
     unsigned char rt;               /* Used for specific instructions like BGEZAL */
-    unsigned short operand[3];      /* Specifies operand format */
+    operand_t operand[3];      /* Specifies operand format */
     unsigned char psuedo : 1;       /* Flag used to indicate psuedo instructions */
 	unsigned char size   : 7;       /* If psuedo is 1, we need the size of the instruction */
 };
