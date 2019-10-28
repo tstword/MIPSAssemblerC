@@ -13,7 +13,7 @@ typedef enum { init_state, comma_accept, colon_accept, left_paren_accept,
                right_paren_accept, identifier_state, identifier_accept,
                integer_state, integer_accept, hex_state, zero_state,
                eof_accept, comment_state, comment_accept, negative_state,
-               string_state, string_accept, eol_accept, invalid_state } state_fsm;
+               string_state, string_accept, eol_accept, invalid_state, period_accept } state_fsm;
 
 struct reserved_entry reserved_table[] = {
     { "$0"      , TOK_REGISTER, .attrval = 0  },
@@ -223,8 +223,9 @@ state_fsm init_fsm(struct tokenizer *tokenizer) {
         case 'a' ... 'z':
         case '$':
         case '_':
-        case '.':
             return identifier_state;
+        case '.':
+            return period_accept;
         case '"':
             return string_state;
         case '#':
@@ -526,6 +527,8 @@ token_t get_next_token(struct tokenizer *tokenizer) {
                 return return_token(TOK_RPAREN, tokenizer);
             case string_accept:
                 return return_token(TOK_STRING, tokenizer);
+            case period_accept:
+                return return_token(TOK_PERIOD, tokenizer);
             case eof_accept:
                 return return_token(TOK_NULL, tokenizer);
             case invalid_state:
@@ -573,6 +576,8 @@ const char *get_token_str(token_t token) {
             return "')'";
         case TOK_EOL:
             return "end of line";
+        case TOK_PERIOD:
+            return "'.'";
     }
     
     return NULL;

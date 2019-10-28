@@ -20,6 +20,7 @@ typedef unsigned int token_t;
 #define TOK_REGISTER    0x09
 #define TOK_STRING      0x0A
 #define TOK_INVALID     0x0B
+#define TOK_PERIOD      0x0C
 
 /* Tokenizer structure */
 struct tokenizer {
