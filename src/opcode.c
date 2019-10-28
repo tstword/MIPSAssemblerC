@@ -1,5 +1,21 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * File: opcode.c
+ * Purpose: Defines the opcode table which maps mnemonics to their
+ * operand format, instruction type, and opcode / funct.
+ * 
+ * Each entry in the opcode table corresponds to their MNEMONIC macro
+ * value to allow O(1) access time. 
+ *
+ * Should you decide to add any more instructions make sure the index entry
+ * is correctly mapped to their MNEMONIC macro value.
+ *
+ * @author: Bryan Rocha
+ * @version: 1.0 (2/3/2019)
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 #include "opcode.h"
 
+/* Opcode table definition */
 struct opcode_entry opcode_table[] = {
     /* ALU Core OPCODES */
     { 0x00, 0x20, 0x00, OPFORMAT_R_TYPE, OPTYPE_DEFAULT }, /* MNEMONIC_ADD */

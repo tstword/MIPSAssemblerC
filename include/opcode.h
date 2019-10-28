@@ -1,13 +1,24 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * File: opcode.h
+ * Purpose: Used to define the neccessary macros and structures
+ * for the opcode table which maps mnemonics into their corresponding
+ * instruction. 
+ * 
+ * There are two types of instructions that can be defined here:
+ *      - DEFAULT: Core instruction, requires 4 bytes
+ *      - PSUEDO:  Used for asm file, expands into one (or more) core instructions
+ *
+ * The global variable opcode_table contains the array of opcode mappings.
+ * @author: Bryan Rocha
+ * @version: 1.0 (8/28/2019)
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 #ifndef MNEMONIC_H
 #define MNEMONIC_H
 
 #include <stdlib.h>
 
-/* Type definitions */
-typedef unsigned int mnemonic_t;
-
-/* Mnemonic name macros */
-/* ALU */
+/* ALU core instructions */
 #define MNEMONIC_ADD      0x00
 #define MNEMONIC_ADDU     0x01
 #define MNEMONIC_AND      0x02
@@ -80,19 +91,18 @@ typedef unsigned int mnemonic_t;
 #define MNEMONIC_MULT     0x37
 #define MNEMONIC_MULTU    0x38
 
-/* opcode type flags */
+/* Opcode type flags */
 #define OPTYPE_DEFAULT    0x0
 #define OPTYPE_PSUEDO     0x1
 
-/* opcode operands flags */
+/* Opcode operands flags */
 #define OPERAND_NONE       0x0
 #define OPERAND_LABEL      0x1
 #define OPERAND_IMMEDIATE  0x2
 #define OPERAND_REGISTER   0x4
 #define OPERAND_ADDRESS    0x8
 
-typedef unsigned char operand_t;
-
+/* Defines the operands that the mnemonic can take */
 #define OPFORMAT_NONE           { OPERAND_NONE, OPERAND_NONE, OPERAND_NONE              }
 #define OPFORMAT_R_TYPE         { OPERAND_REGISTER, OPERAND_REGISTER, OPERAND_REGISTER  }
 #define OPFORMAT_I_TYPE         { OPERAND_REGISTER, OPERAND_REGISTER, OPERAND_IMMEDIATE }
@@ -105,12 +115,16 @@ typedef unsigned char operand_t;
 #define OPFORMAT_REG_REG        { OPERAND_REGISTER, OPERAND_REGISTER, OPERAND_NONE      }
 #define OPFORMAT_REG_LAB        { OPERAND_REGISTER, OPERAND_LABEL, OPERAND_NONE         }
 
+/* Type definitions */
+typedef unsigned int mnemonic_t;
+typedef unsigned char operand_t;
+
 /* opcode entry table structure */
 struct opcode_entry {
     unsigned char opcode;           /* Instruction opcode */
     unsigned char funct;            /* Instruction funct */
     unsigned char rt;               /* Used for specific instructions like BGEZAL */
-    operand_t operand[3];      /* Specifies operand format */
+    operand_t operand[3];           /* Specifies operand format */
     unsigned char psuedo : 1;       /* Flag used to indicate psuedo instructions */
 	unsigned char size   : 7;       /* If psuedo is 1, we need the size of the instruction */
 };
