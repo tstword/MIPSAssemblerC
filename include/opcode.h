@@ -75,11 +75,31 @@ typedef unsigned int mnemonic_t;
 #define OPTYPE_DEFAULT    0x0
 #define OPTYPE_PSUEDO     0x1
 
+/* opcode operands flags */
+#define OPERAND_NONE       0x0
+#define OPERAND_LABEL      0x1
+#define OPERAND_IMMEDIATE  0x2
+#define OPERAND_REGISTER   0x3
+#define OPERAND_ADDRESS    0x4
+
+#define OPFORMAT_NONE           { OPERAND_NONE, OPERAND_NONE, OPERAND_NONE              }
+#define OPFORMAT_R_TYPE         { OPERAND_REGISTER, OPERAND_REGISTER, OPERAND_REGISTER  }
+#define OPFORMAT_I_TYPE         { OPERAND_REGISTER, OPERAND_REGISTER, OPERAND_IMMEDIATE }
+#define OPFORMAT_I_ADDR_TYPE    { OPERAND_REGISTER, OPERAND_ADDRESS, OPERAND_NONE       }
+#define OPFORMAT_I_BRANCH_TYPE  { OPERAND_REGISTER, OPERAND_REGISTER, OPERAND_LABEL     }
+#define OPFORMAT_J_TYPE         { OPERAND_LABEL, OPERAND_NONE, OPERAND_NONE             }
+#define OPFORMAT_BRANCH_TYPE    { OPERAND_REGISTER, OPERAND_LABEL, OPERAND_NONE         }
+#define OPFORMAT_REGISTER       { OPERAND_REGISTER, OPERAND_NONE, OPERAND_NONE          }
+#define OPFORMAT_REG_IMM        { OPERAND_REGISTER, OPERAND_IMMEDIATE, OPERAND_NONE     }
+#define OPFORMAT_REG_REG        { OPERAND_REGISTER, OPERAND_REGISTER, OPERAND_NONE      }
+#define OPFORMAT_REG_LAB        { OPERAND_REGISTER, OPERAND_LABEL, OPERAND_NONE         }
+
 /* opcode entry table structure */
 struct opcode_entry {
     unsigned char opcode;           /* Instruction opcode */
     unsigned char funct;            /* Instruction funct */
     unsigned char rt;               /* Used for specific instructions like BGEZAL */
+    unsigned short operand[3];      /* Specifies operand format */
     unsigned char psuedo : 1;       /* Flag used to indicate psuedo instructions */
 	unsigned char size   : 7;       /* If psuedo is 1, we need the size of the instruction */
 };
