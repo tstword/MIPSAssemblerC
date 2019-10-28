@@ -10,6 +10,7 @@
 struct parser *cfg_parser = NULL;
 
 void report_cfg(const char *fmt, ...) {
+    /* Routine to allow formatted printing similar to printf */
     va_list vargs;
     size_t bufsize = 0;
     char *buffer = NULL;
@@ -25,6 +26,7 @@ void report_cfg(const char *fmt, ...) {
         vsnprintf(buffer, bufsize, fmt, vargs);
         va_end(vargs);
     }
+    /* End routine */
 
     cfg_parser->status = PARSER_STATUS_FAIL;
 
@@ -70,12 +72,21 @@ void label_cfg() {
         match_cfg(TOK_IDENTIFIER);
         if(cfg_parser->lookahead == TOK_COLON) {
             match_cfg(TOK_COLON);
-            if(get_symbol_table(symbol_table, id) != NULL) {
-                report_cfg("Multiple definitions of label '%s' on line %ld, col %ld", id, cfg_parser->lineno, cfg_parser->colno);
+            struct symbol_table_entry *entry;
+            if((entry = get_symbol_table(symbol_table, id)) != NULL) {
+                if(entry->status != SYMBOL_UNDEFINED) {
+                    entry->status = SYMBOL_DOUBLY;
+                    report_cfg("Multiple definitions of label '%s' on line %ld, col %ld", id, cfg_parser->lineno, cfg_parser->colno);
+                } else {
+                    entry->offset = cfg_parser->LC;
+                    entry->segment = cfg_parser->segment;
+                    entry->status = SYMBOL_DEFINED;
+                }
             } else { 
-                struct symbol_table_entry *entry = insert_symbol_table(symbol_table, id);
-                entry->value.offset = cfg_parser->LC;
-                entry->value.segment = cfg_parser->segment;
+                entry = insert_symbol_table(symbol_table, id);
+                entry->offset = cfg_parser->LC;
+                entry->segment = cfg_parser->segment;
+                entry->status = SYMBOL_DEFINED;
             }
         } else {
             report_cfg("Unrecognized mnemonic '%s' on line %ld, col %ld", id, cfg_parser->lineno, cfg_parser->colno);
@@ -93,28 +104,34 @@ struct operand_node *operand_cfg() {
         case TOK_REGISTER: {
             int value = cfg_parser->tokenizer->attrval;
             match_cfg(TOK_REGISTER);
+            
             node = malloc(sizeof(struct operand_node));
             node->operand = OPERAND_REGISTER;
             node->value.reg = value;
             node->next = NULL;
+            
             break;
         }
         case TOK_IDENTIFIER: {
             char *id = strdup(cfg_parser->tokenizer->lexbuf);
             match_cfg(TOK_IDENTIFIER);
+            
             node = malloc(sizeof(struct operand_node));
             node->operand = OPERAND_LABEL;
             node->identifier = id;
             node->next = NULL;
+            
             break;
         }
         case TOK_INTEGER: {
             int value = cfg_parser->tokenizer->attrval;
             match_cfg(TOK_INTEGER);
+            
             node = malloc(sizeof(struct operand_node));
             node->operand = OPERAND_IMMEDIATE;
             node->value.integer = value;
             node->next = NULL;
+            
             if(cfg_parser->lookahead == TOK_LPAREN) {
                 match_cfg(TOK_LPAREN);
                 int reg_value = cfg_parser->tokenizer->attrval;
@@ -177,6 +194,11 @@ void verify_instruction(struct instruction_node *instr) {
                 report_cfg("Invalid operand combiniation for instruction '%s' on line %ld", instr->mnemonic->id, cfg_parser->lineno);
                 break;
             }
+            if((((struct opcode_entry *)instr->mnemonic->attrptr)->operand[i] & OPERAND_LABEL)) {
+                if(get_symbol_table(symbol_table, operand->identifier) == NULL) {
+                    insert_front(cfg_parser->sym_list, insert_symbol_table(symbol_table, operand->identifier));
+                }
+            }
         }
         operand = operand->next;
     }
@@ -188,10 +210,11 @@ struct instruction_node *instruction_cfg() {
     switch(cfg_parser->lookahead) {
         case TOK_IDENTIFIER:
             label_cfg();
-            if(cfg_parser->lookahead == TOK_MNEMONIC) {
+            if(cfg_parser->lookahead == TOK_MNEMONIC) {            
                 node = malloc(sizeof(struct instruction_node));
                 node->mnemonic = cfg_parser->tokenizer->attrptr;
                 node->next = NULL;
+                
                 match_cfg(TOK_MNEMONIC);
                 switch(cfg_parser->lookahead) {
                     case TOK_IDENTIFIER:
@@ -214,6 +237,7 @@ struct instruction_node *instruction_cfg() {
             node = malloc(sizeof(struct instruction_node));
             node->mnemonic = cfg_parser->tokenizer->attrptr;
             node->next = NULL;
+            
             match_cfg(TOK_MNEMONIC);
             switch(cfg_parser->lookahead) {
                 case TOK_IDENTIFIER:
@@ -268,6 +292,7 @@ struct parser *create_parser(struct tokenizer *tk) {
 
     parser->tokenizer = tk;
     parser->lookahead = TOK_NULL;
+    parser->sym_list = create_list();
     parser->status = PARSER_STATUS_NULL;
     parser->lineno = 1;
     parser->colno = 1;
@@ -284,7 +309,16 @@ pstatus_t execute_parser(struct parser *parser) {
     
     /* Start grammar recognization... */
     parser->ast = program_cfg(parser);
-    //program_cfg(parser);
+    
+    /* Verify undefined symbol table */
+    for(struct list_node *head = parser->sym_list->front; head != NULL; head = head->next) {
+        symstat_t status = ((struct symbol_table_entry *)head->value)->status;
+        if(status == SYMBOL_UNDEFINED) {
+            /* Symbol is still undefined, program cannot be assembled */
+            fprintf(stderr, "Symbol Error: Undefined symbol '%s'\n", ((struct symbol_table_entry *)head->value)->key);
+            parser->status = PARSER_STATUS_FAIL;
+        }
+    }
 
     if(parser->status == PARSER_STATUS_NULL) {
         parser->status = PARSER_STATUS_OK;
@@ -313,6 +347,9 @@ void destroy_parser(struct parser **parser) {
 
     /* Free AST */
     free((*parser)->ast);
+
+    /* Free linked list */
+    delete_linked_list(&((*parser)->sym_list), LN_VSTATIC);
 
     /* Simple free the data */
     free(*parser);

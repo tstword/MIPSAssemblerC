@@ -42,9 +42,11 @@ struct symbol_table_entry *insert_symbol_table(struct symbol_table *symtab, cons
     struct symbol_table_entry *item = malloc(sizeof(struct symbol_table_entry));
     
     item->key = strdup(key);
-    item->value.offset = ST_NULL;
-    item->value.segment = ST_NULL;
-    item->value.datasize = ST_NULL;
+    item->status = SYMBOL_UNDEFINED;
+    item->offset = 0x00;
+    item->segment = 0x00;
+    item->datasize = 0x00;
+    item->instr_list = NULL;
     item->next = NULL;
 
     size_t index = djb2hash(key) % symtab->bucket_size;
@@ -77,12 +79,12 @@ struct symbol_table_entry *insert_symbol_table(struct symbol_table *symtab, cons
     return item;
 }
 
-struct symbol_table_attr *get_symbol_table(struct symbol_table *symtab, const char *key) {
+struct symbol_table_entry *get_symbol_table(struct symbol_table *symtab, const char *key) {
     size_t index = djb2hash(key) % symtab->bucket_size;
     struct symbol_table_entry *head = symtab->buckets[index];
 
     while(head != NULL) {
-        if(strcmp(key, head->key) == 0) return &(head->value);
+        if(strcmp(key, head->key) == 0) return head;
         head = head->next;
     }
 
@@ -120,7 +122,8 @@ void print_symbol_table(struct symbol_table *symtab) {
         struct symbol_table_entry *head = symtab->buckets[i];
         if(head != NULL) ++bucketsUsed;
         while(head != NULL) {
-            printf("[ %-20s | 0x%08X | 0x%02X | 0x%02X ]---> ", head->key, head->value.offset, head->value.segment, head->value.datasize);
+            const char *def[3] = { "UNDEFINED", "DEFINED", "DOUBLY" };
+            printf("[ %-20s | 0x%08X | 0x%02X | 0x%02X | %-10s ]---> ", head->key, head->offset, head->segment, head->datasize, def[head->status]);
             if(head->next == NULL) printf("\n");
             head = head->next;
         }
