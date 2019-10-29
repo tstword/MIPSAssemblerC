@@ -81,10 +81,13 @@ struct program_node {
 
 /* Parser structure definition */
 struct parser {
-    struct tokenizer *tokenizer;            /* Pointer to tokenizer */
+    struct tokenizer *tokenizer;            /* Address of current tokenizer */
 
     struct program_node *ast;               /* Root of the abstract syntax tree */
     struct linked_list *sym_list;           /* List of symbols that were referenced before definition */
+
+    struct linked_list *src_files;          /* List of source file strings */
+    struct list_node *current_file;         /* Current file */
     
     segment_t segment;                      /* Indication of current segment */
 
@@ -98,7 +101,7 @@ struct parser {
 };
 
 /* Function prototypes */
-struct parser *create_parser(struct tokenizer *);
+struct parser *create_parser(int, const char **);
 pstatus_t execute_parser(struct parser *);
 void destroy_parser(struct parser **);
 

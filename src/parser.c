@@ -69,8 +69,8 @@ void report_cfg(const char *fmt, ...) {
     cfg_parser->status = PARSER_STATUS_FAIL;
 
     /* Check if tokenizer failed, otherwise CFG failed */
-    if(cfg_parser->lookahead == TOK_INVALID) fprintf(stderr, "Lexical Error: %s\n", cfg_parser->tokenizer->errmsg);
-    else if(buffer != NULL) fprintf(stderr, "Syntax Error: %s\n", buffer);
+    if(cfg_parser->lookahead == TOK_INVALID) fprintf(stderr, "%s: Error: %s\n", (const char*)cfg_parser->current_file->value, cfg_parser->tokenizer->errmsg);
+    else if(buffer != NULL) fprintf(stderr, "%s: Error: %s\n", (const char*)cfg_parser->current_file->value, buffer);
 
     /* Recover and skip to next line to retrieve extra data */
     while(cfg_parser->lookahead != TOK_EOL && cfg_parser->lookahead != TOK_NULL) {
@@ -384,13 +384,20 @@ struct program_node *program_cfg(struct parser *parser) {
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Function: create_parser
  * Purpose: Allocates and initializes the parser structure 
- * @param tk -> Address of the tokenizer
  * @return Pointer to the allocated parser structure
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-struct parser *create_parser(struct tokenizer *tk) {
+struct parser *create_parser(int file_count, const char **file_arr) {
     struct parser *parser = malloc(sizeof(struct parser));
 
-    parser->tokenizer = tk;
+    parser->tokenizer = NULL;
+    parser->src_files = create_list();
+
+    /* Setup source files */
+    for(int i = 0; i < file_count; ++i) {
+        insert_rear(parser->src_files, (void *)file_arr[i]);
+    }
+
+    parser->current_file = parser->src_files->front;
     parser->lookahead = TOK_NULL;
     parser->sym_list = create_list();
     parser->status = PARSER_STATUS_NULL;
@@ -410,12 +417,59 @@ struct parser *create_parser(struct tokenizer *tk) {
  * @param parser -> Address of the parser structure
  * @return PARSER_STATUS_OK if no errors, otherwise PARSER_STATUS_FAIL
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-pstatus_t execute_parser(struct parser *parser) {
-    /* Get lookahead token... */
-    parser->lookahead = get_next_token(parser->tokenizer);
+pstatus_t execute_parser(struct parser *parser) {  
+    /* Setup initial tokenizer structure */
+    if(parser->current_file == NULL) {
+        fprintf(stderr, "Input: No source files to assemble\n");
+        parser->status = PARSER_STATUS_FAIL;
+        return parser->status;
+    }
     
-    /* Start grammar recognization... */
-    parser->ast = program_cfg(parser);
+    /* Go through entire source files */
+    while(parser->current_file != NULL) {
+        /* Setup tokenizer */
+        parser->tokenizer = create_tokenizer((const char *)parser->current_file->value);
+        
+        if(parser->tokenizer == NULL) {
+            fprintf(stderr, "%s: File does not exist or cannot be opened\n", (const char *)parser->current_file->value);
+            cfg_parser->status = PARSER_STATUS_FAIL;
+            return cfg_parser->status;
+        }
+
+        /* Setup lookahead */
+        parser->lookahead = get_next_token(parser->tokenizer);
+
+        /* Start grammar recognization... */
+        parser->ast = program_cfg(parser);
+
+        /* Destory AST */
+        struct instruction_node *instr_node = parser->ast ? parser->ast->instruction_list : NULL;
+        /* Free instructions */
+        while(instr_node != NULL) {
+            struct instruction_node *next_instr = instr_node->next;
+            /* Free operands */
+            struct operand_node *op_node = instr_node->operand_list;
+            while(op_node != NULL) {
+                struct operand_node *next_op = op_node->next;
+                if(op_node->operand == OPERAND_LABEL) free(op_node->identifier);
+                free(op_node);
+                op_node = next_op;
+            }
+            free(instr_node);
+            instr_node = next_instr;
+        }
+
+        /* Free AST */
+        free(parser->ast);
+
+        parser->ast = NULL;
+
+        /* Delete tokenizer structure */
+        destroy_tokenizer(&(parser->tokenizer));
+
+        /* Get next file in the file list */
+        parser->current_file = parser->current_file->next;
+    }
     
     /* Verify undefined symbol table */
     for(struct list_node *head = parser->sym_list->front; head != NULL; head = head->next) {
@@ -462,6 +516,7 @@ void destroy_parser(struct parser **parser) {
     free((*parser)->ast);
 
     /* Free linked list */
+    delete_linked_list(&((*parser)->src_files), LN_VSTATIC);
     delete_linked_list(&((*parser)->sym_list), LN_VSTATIC);
 
     /* Simple free the data */

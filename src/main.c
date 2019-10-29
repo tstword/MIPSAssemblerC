@@ -66,7 +66,7 @@ void printToken(token_t token, struct tokenizer *tokenizer) {
 
 int main(int argc, char *argv[]) {
     
-    if(argc != 2) {
+    if(argc == 1) {
         /* Print usage and terminate */
         fprintf(stderr, "Usage: %s [source]\n", argv[0]);
         return -1;
@@ -74,29 +74,11 @@ int main(int argc, char *argv[]) {
 
     symbol_table = create_symbol_table();
 
-    /* Create tokenizer */
-    struct tokenizer *tokenizer = create_tokenizer(argv[1]);
-    
-    /* Failed to create a tokenizer */
-    if(tokenizer == NULL) {
-        fprintf(stderr, "> FATAL ERROR: Failed to create tokenizer: %s\n", strerror(errno));
-        terminateError();
-    }
-
-    struct parser *parser = create_parser(tokenizer);
+    struct parser *parser = create_parser(argc - 1, (const char **)(argv + 1));
 
     if(execute_parser(parser) == PARSER_STATUS_FAIL) {
         fprintf(stderr, "\nFailed to assemble program\n");
     }
-
-    // /* Recieve stream of tokens */
-    // token_t token;
-    // while((token = get_next_token(tokenizer)) != TOK_NULL) {
-    //    printToken(token, tokenizer);
-    // }
-
-    /* Destroy tokenizer */
-    destroy_tokenizer(&tokenizer);
 
     /* Destory parser */
     destroy_parser(&parser);

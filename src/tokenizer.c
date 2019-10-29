@@ -298,6 +298,7 @@ state_fsm init_fsm(struct tokenizer *tokenizer) {
             tokenizer->bufpos--;
             return init_state;
         case EOF:
+            tungetc(ch, tokenizer);
             return eof_accept;
         default:
             report_fsm(tokenizer, "Unexpected character '%c' on line %ld, column %ld", ch, tokenizer->lineno, tokenizer->colno - 1);
