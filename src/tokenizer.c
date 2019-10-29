@@ -217,7 +217,7 @@ void tungetc(int ch, struct tokenizer *tokenizer) {
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: tungetc
+ * Function: tpeekc
  * Purpose: Retrieves next character in file stream without consuming it
  * @param tokenizer -> Pointer to the tokenizer structure
  * @return The next character in the file stream
