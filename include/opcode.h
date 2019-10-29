@@ -1,5 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * File: opcode.h
+ *
  * Purpose: Used to define the neccessary macros and structures
  * for the opcode table which maps mnemonics into their corresponding
  * instruction. 
@@ -9,6 +10,7 @@
  *      - PSUEDO:  Used for asm file, expands into one (or more) core instructions
  *
  * The global variable opcode_table contains the array of opcode mappings.
+ *
  * @author: Bryan Rocha
  * @version: 1.0 (8/28/2019)
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */

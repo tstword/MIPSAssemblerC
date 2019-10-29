@@ -1,3 +1,20 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * File: tokenizer.c
+ * Purpose: Converts assembly file from source into a sequence of tokens for
+ * the assembler / parser to use. 
+ *
+ * Defines the neccessary functions for the tokenizer to work. The tokenizer 
+ * uses a reserved keyword table to recognize special keywords like the mnemonics or 
+ * registers. If you decide to add new reserved keywords ensure that the array
+ * is sorted by keyword, otherwise the get_reserved_table function may fail. 
+ *
+ * The tokenizer uses a finite state machine along with the reserved keyword table
+ * to recognize tokens.
+ *
+ * @author: Bryan Rocha
+ * @version: 1.0 (8/28/2019)
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 #include "tokenizer.h"
 
 #include <stdio.h>
@@ -9,12 +26,14 @@
 
 #include "opcode.h"
 
+/* Finite state machine states */
 typedef enum { init_state, comma_accept, colon_accept, left_paren_accept,
                right_paren_accept, identifier_state, identifier_accept,
                integer_state, integer_accept, hex_state, zero_state,
                eof_accept, comment_state, comment_accept, negative_state,
                string_state, string_accept, eol_accept, invalid_state, period_accept } state_fsm;
 
+/* Reserved keyword table */
 struct reserved_entry reserved_table[] = {
     { "$0"      , TOK_REGISTER, .attrval = 0  },
     { "$1"      , TOK_REGISTER, .attrval = 1  },
@@ -141,6 +160,13 @@ struct reserved_entry reserved_table[] = {
 
 const size_t reserved_table_size = sizeof(reserved_table) / sizeof(struct reserved_entry);
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Function: get_reserved_table
+ * Purpose: Retrieves entry in reserved table based on key
+ * @param key -> Keyword string to check
+ * @return Returns the corresponding entry in the table if found, otherwise NULL
+ * @comments: Executes in O(log(n)) time
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 struct reserved_entry* get_reserved_table(const char *key) {
     size_t left = 0, right = reserved_table_size - 1;
     size_t mid;
@@ -158,6 +184,12 @@ struct reserved_entry* get_reserved_table(const char *key) {
     return NULL;
 }
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Function: tgetc
+ * Purpose: Retrieves next character in file stream and stores into lexical buffer
+ * @param tokenizer -> Pointer to the tokenizer structure
+ * @return The next character in the file stream
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 int tgetc(struct tokenizer *tokenizer) {
     int ch = fgetc(tokenizer->fstream);
 
@@ -173,18 +205,36 @@ int tgetc(struct tokenizer *tokenizer) {
     return ch;
 }
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Function: tungetc
+ * Purpose: Puts back character in file stream and removes from lexical buffer
+ * @param tokenizer -> Pointer to the tokenizer structure
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 void tungetc(int ch, struct tokenizer *tokenizer) {
     ungetc(ch, tokenizer->fstream);
     tokenizer->colno--;
     tokenizer->bufpos--;
 }
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Function: tungetc
+ * Purpose: Retrieves next character in file stream without consuming it
+ * @param tokenizer -> Pointer to the tokenizer structure
+ * @return The next character in the file stream
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 int tpeekc(struct tokenizer *tokenizer) {
     int ch = fgetc(tokenizer->fstream);
     ungetc(ch, tokenizer->fstream);
     return ch;
 }
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Function: report_fsm
+ * Purpose: Reports an error in the finite state machine and stores it 
+ * into tokenizer->errmsg
+ * @param tokenizer -> Pointer to the tokenizer structure
+ *        fmt       -> Format string
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 void report_fsm(struct tokenizer *tokenizer, const char *fmt, ...) {
     va_list vargs;
     size_t bufsize = 0;
@@ -203,6 +253,12 @@ void report_fsm(struct tokenizer *tokenizer, const char *fmt, ...) {
     va_end(vargs);
 }
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Function: init_fsm
+ * Purpose: Initial finite state machine used to transition into other states
+ * @param tokenizer -> Pointer to the tokenizer structure
+ * @return The next FSM state to go to
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 state_fsm init_fsm(struct tokenizer *tokenizer) {
     int ch = tgetc(tokenizer);
 
@@ -249,6 +305,12 @@ state_fsm init_fsm(struct tokenizer *tokenizer) {
     }
 }
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Function: identifier_fsm
+ * Purpose: Used to recognize identifiers [A-Za-z0-9_]*
+ * @param tokenizer -> Pointer to the tokenizer structure
+ * @return The next FSM state to go to
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 state_fsm identifier_fsm(struct tokenizer *tokenizer) {
     int ch = tgetc(tokenizer);
 
@@ -267,6 +329,12 @@ state_fsm identifier_fsm(struct tokenizer *tokenizer) {
     return invalid_state;
 }
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Function: integer_fsm
+ * Purpose: Used to recognize integers [1-9][0-9]*
+ * @param tokenizer -> Pointer to the tokenizer structure
+ * @return The next FSM state to go to
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 state_fsm integer_fsm(struct tokenizer *tokenizer) {
     int ch = tgetc(tokenizer);
 
@@ -282,6 +350,12 @@ state_fsm integer_fsm(struct tokenizer *tokenizer) {
     return invalid_state;
 }
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Function: zero_fsm
+ * Purpose: Used to determine if integer is a hex number or decimal number
+ * @param tokenizer -> Pointer to the tokenizer structure
+ * @return The next FSM state to go to
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 state_fsm zero_fsm(struct tokenizer *tokenizer) {
     int ch = tgetc(tokenizer);
 
@@ -304,6 +378,12 @@ state_fsm zero_fsm(struct tokenizer *tokenizer) {
     return invalid_state;
 }
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Function: hex_fsm
+ * Purpose: Used to recognize hex numbers [0x | 0X][0-9A-Fa-f]*
+ * @param tokenizer -> Pointer to the tokenizer structure
+ * @return The next FSM state to go to
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 state_fsm hex_fsm(struct tokenizer *tokenizer) {
     int ch = tgetc(tokenizer);
 
@@ -320,6 +400,13 @@ state_fsm hex_fsm(struct tokenizer *tokenizer) {
     return invalid_state;
 }
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Function: comment_fsm
+ * Purpose: Used to recognize comments [#][^\n]
+ * NOTE: When accepted, get_next_token will ignore it and move to the next token
+ * @param tokenizer -> Pointer to the tokenizer structure
+ * @return The next FSM state to go to
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 state_fsm comment_fsm(struct tokenizer *tokenizer) {
     int ch = tgetc(tokenizer);
 
@@ -328,8 +415,6 @@ state_fsm comment_fsm(struct tokenizer *tokenizer) {
             tungetc(ch, tokenizer);
             return comment_accept;
         case '\n':
-            //tokenizer->lineno++;
-            //tokenizer->colno = 1;
             tungetc(ch, tokenizer);
             return comment_accept;
         default:
@@ -339,6 +424,12 @@ state_fsm comment_fsm(struct tokenizer *tokenizer) {
     return invalid_state;
 }
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Function: negative_fsm
+ * Purpose: Used to determine if negative integer is hex or decimal
+ * @param tokenizer -> Pointer to the tokenizer structure
+ * @return The next FSM state to go to
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 state_fsm negative_fsm(struct tokenizer *tokenizer) {
     int ch = tgetc(tokenizer);
 
@@ -356,6 +447,12 @@ state_fsm negative_fsm(struct tokenizer *tokenizer) {
     return invalid_state;
 }
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Function: string_fsm
+ * Purpose: Used to recognize strings
+ * @param tokenizer -> Pointer to the tokenizer structure
+ * @return The next FSM state to go to
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 state_fsm string_fsm(struct tokenizer *tokenizer) {
     int ch = tgetc(tokenizer);
 
@@ -374,6 +471,16 @@ state_fsm string_fsm(struct tokenizer *tokenizer) {
     return invalid_state;
 }
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Function: return_token
+ * Purpose: Serves as a final step before returning the token. If the token is
+ * an identifier it will attempt to look up the identifier in the reserved
+ * keyword table and return the appropriate token. Additionally, this sets the
+ * attribute in the tokenizer based on the token.
+ * @param token     -> Token recognized from finite state machine
+ *        tokenizer -> Pointer to the tokenizer structure
+ * @return The actual token to return to the function get_next_token
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 token_t return_token(token_t token, struct tokenizer *tokenizer) {
     int ch;
     struct reserved_entry *entry;
@@ -420,8 +527,6 @@ token_t return_token(token_t token, struct tokenizer *tokenizer) {
                     return TOK_INVALID;
                 }
             }
-
-            //printf("INTEGER FOUND: %d\n", tokenizer->attrval);
             return token;
         }
         default:
@@ -433,6 +538,12 @@ token_t return_token(token_t token, struct tokenizer *tokenizer) {
     return token;
 }
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Function: create_tokenizer
+ * Purpose: Allocates and initializes the tokenizer structure 
+ * @param file -> Name of the file to read from
+ * @return Pointer to the allocated tokenizer structure
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 struct tokenizer *create_tokenizer(const char *file) {
     /* Create the tokenizer struct */
     struct tokenizer *tokenizer = malloc(sizeof(struct tokenizer));
@@ -477,6 +588,15 @@ struct tokenizer *create_tokenizer(const char *file) {
     return tokenizer;
 }
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Function: get_next_token
+ * Purpose: Retrieves the next token from the file stream.
+ * Special cases: TOK_INVALID -> Unrecognizable pattern / character 
+ *                               Error message found in tokenizer->errmsg
+ *                TOK_NULL    -> Indicates EOF
+ * @param tokenizer -> Pointer to the tokenizer structure
+ * @return The next token in the file stream
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 token_t get_next_token(struct tokenizer *tokenizer) {
     state_fsm next_state = init_state;
     
@@ -539,6 +659,11 @@ token_t get_next_token(struct tokenizer *tokenizer) {
     return TOK_INVALID;
 }
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Function: destroy_tokenizer
+ * Purpose: Deallocates the tokenizer structure and sets it to NULL
+ * @param tokenizer -> Pointer to the tokenizer structure
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 void destroy_tokenizer(struct tokenizer **tokenizer) {
     if(*tokenizer == NULL) return;
 
@@ -554,6 +679,12 @@ void destroy_tokenizer(struct tokenizer **tokenizer) {
     *tokenizer = NULL;
 }
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Function: get_token_str
+ * Purpose: Returns the string associated with the token
+ * @param token -> Token to convert
+ * @return String corresponding to the token
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 const char *get_token_str(token_t token) {
     switch(token) {
         case TOK_IDENTIFIER:
