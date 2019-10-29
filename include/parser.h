@@ -1,3 +1,36 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * File: parser.h
+ *
+ * Purpose: Responsible for parsing and verifying the sequence of tokens
+ * as a MIPS assembly program. The parser is implemented as a recursive-descent
+ * parser, as a result the language is defined as a LL(1) grammer:
+ *
+ *     program          -> instruction_list
+ *
+ *     instruction_list -> instruction instruction_list | 
+ *                         <EOF>
+ *
+ *     instruction      -> label <EOL> | 
+ *                         label <MNEMONIC> operand_list <EOL> | 
+ *                         <EOL> ; NO-OP
+ *
+ *     operand_list     -> operand <COMMA> operand_list | 
+ *                         operand
+ * 
+ *     operand          -> <REGISTER>   | 
+ *                         <IDENTIFIER> | 
+ *                         <INTEGER>    |
+ *                         <INTEGER> <LPAREN> <REGISTER> <RPAREN>
+ *                    
+ *     label            -> <ID> <COLON>
+ *
+ * Failure in parsing the tokens is indicated by the macro PARSER_STATUS_FAIL
+ * Success in parsing the tokens is indicated by the macro PARSER_STATUS_OK
+ * 
+ * @author: Bryan Rocha
+ * @version: 1.0 (8/28/2019)
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 #ifndef PARSER_H
 #define PARSER_H
 

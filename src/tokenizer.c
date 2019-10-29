@@ -662,7 +662,7 @@ token_t get_next_token(struct tokenizer *tokenizer) {
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Function: destroy_tokenizer
  * Purpose: Deallocates the tokenizer structure and sets it to NULL
- * @param tokenizer -> Pointer to the tokenizer structure
+ * @param tokenizer -> Reference to the pointer to the tokenizer structure
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 void destroy_tokenizer(struct tokenizer **tokenizer) {
     if(*tokenizer == NULL) return;

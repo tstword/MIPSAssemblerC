@@ -1,3 +1,22 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * File: symtable.h
+ *
+ * Purpose: Declares the necessary functions and macros to construct a symbol table.
+ * The symbol table is constructed as a hash table with a load of 70% before
+ * percolating. The operation run times are listed below:
+ *
+ *      Insertion: O(1) expected time
+ *      Access:    O(1) expected time
+ *
+ * Entries in the symbol table can be defined as:
+ *      UNDEFINED: Referenced by instruction before being declared
+ *      DEFINED:   Declared and defined
+ *      DOUBLY:    Multiple definitions (cannot be assembled)
+ *
+ * @author: Bryan Rocha
+ * @version: 1.0 (8/28/2019)
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 #ifndef SYMTABLE_H
 #define SYMTABLE_H
 
