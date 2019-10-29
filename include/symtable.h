@@ -51,6 +51,8 @@ struct symbol_table_entry *insert_symbol_table(struct symbol_table *, const char
 struct symbol_table_entry *get_symbol_table(struct symbol_table *, const char *);
 void destroy_symbol_table(struct symbol_table **);
 
+#ifdef DEBUG
 void print_symbol_table(struct symbol_table *);
+#endif
 
 #endif

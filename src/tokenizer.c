@@ -160,6 +160,18 @@ struct reserved_entry reserved_table[] = {
 
 const size_t reserved_table_size = sizeof(reserved_table) / sizeof(struct reserved_entry);
 
+int my_strcmp(const char *s1, const char *s2) {
+    const signed char *str1 = (const signed char*)(s1);
+    const signed char *str2 = (const signed char*)(s2);
+
+    while ((*str1 == *str2) && *str1)
+    {
+        str1++;
+        str2++;
+    }
+    return (*str1 - *str2);
+}
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Function: get_reserved_table
  * Purpose: Retrieves entry in reserved table based on key
@@ -168,13 +180,13 @@ const size_t reserved_table_size = sizeof(reserved_table) / sizeof(struct reserv
  * @comments: Executes in O(log(n)) time
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 struct reserved_entry* get_reserved_table(const char *key) {
-    size_t left = 0, right = reserved_table_size - 1;
-    size_t mid;
+    ssize_t left = 0, right = reserved_table_size - 1;
+    ssize_t mid;
     int cmp_result;
     
     while(left <= right) {
-        mid = left + ((right - left) >> 1);
-        cmp_result = strcmp(reserved_table[mid].id, key);
+        mid = left + ((right - left) / 2);
+        cmp_result = my_strcmp(reserved_table[mid].id, key);
         
         if(cmp_result == 0) return reserved_table + mid;
         if(cmp_result < 0) left = mid + 1;
@@ -561,7 +573,7 @@ struct tokenizer *create_tokenizer(const char *file) {
     }
 
     /* Create string buffer */
-    tokenizer->lexbuf = malloc(sizeof(char) << 5);
+    tokenizer->lexbuf = malloc(32);
     
     /* Failed to allocate space */
     if(tokenizer->lexbuf == NULL) { 

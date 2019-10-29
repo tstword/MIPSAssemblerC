@@ -101,7 +101,9 @@ int main(int argc, char *argv[]) {
     /* Destory parser */
     destroy_parser(&parser);
 
+    #ifdef DEBUG
     print_symbol_table(symbol_table);
+    #endif
 
     destroy_symbol_table(&symbol_table);
 
