@@ -160,18 +160,6 @@ struct reserved_entry reserved_table[] = {
 
 const size_t reserved_table_size = sizeof(reserved_table) / sizeof(struct reserved_entry);
 
-int my_strcmp(const char *s1, const char *s2) {
-    const signed char *str1 = (const signed char*)(s1);
-    const signed char *str2 = (const signed char*)(s2);
-
-    while ((*str1 == *str2) && *str1)
-    {
-        str1++;
-        str2++;
-    }
-    return (*str1 - *str2);
-}
-
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Function: get_reserved_table
  * Purpose: Retrieves entry in reserved table based on key
@@ -186,7 +174,7 @@ struct reserved_entry* get_reserved_table(const char *key) {
     
     while(left <= right) {
         mid = left + ((right - left) / 2);
-        cmp_result = my_strcmp(reserved_table[mid].id, key);
+        cmp_result = strcmp(reserved_table[mid].id, key);
         
         if(cmp_result == 0) return reserved_table + mid;
         if(cmp_result < 0) left = mid + 1;

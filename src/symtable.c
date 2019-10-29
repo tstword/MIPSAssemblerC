@@ -135,8 +135,6 @@ void print_symbol_table(struct symbol_table *symtab) {
                     head->datasize, symtab_status_str[head->status]);
             
             if(head->next == NULL) printf("\n");
-            
-            head = head->next;
         }
     }
 }
