@@ -301,7 +301,10 @@ state_fsm init_fsm(struct tokenizer *tokenizer) {
             tungetc(ch, tokenizer);
             return eof_accept;
         default:
-            report_fsm(tokenizer, "Unexpected character '%c' on line %ld, column %ld", ch, tokenizer->lineno, tokenizer->colno - 1);
+            if(isprint(ch))
+                report_fsm(tokenizer, "Unexpected character '%c' on line %ld, column %ld", ch, tokenizer->lineno, tokenizer->colno - 1);
+            else 
+                report_fsm(tokenizer, "Unexpected character 0x%02X on line %ld, column %ld", ch, tokenizer->lineno, tokenizer->colno - 1);
             return invalid_state;
     }
 }
