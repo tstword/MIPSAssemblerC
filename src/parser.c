@@ -224,8 +224,8 @@ struct operand_node *operand_cfg() {
         }
         case TOK_EOL:
         case TOK_NULL:
-			report_cfg("Expected operand after line %ld, col %ld", cfg_parser->lineno, cfg_parser->colno);
-			break;
+            report_cfg("Expected operand after line %ld, col %ld", cfg_parser->lineno, cfg_parser->colno);
+            break;
         default:
             report_cfg("Invalid operand '%s' on line %ld, col %ld", cfg_parser->tokenizer->lexbuf, cfg_parser->lineno, cfg_parser->colno);
     }
