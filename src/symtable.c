@@ -204,7 +204,7 @@ void print_symbol_table(struct symbol_table *symtab) {
 
     for(size_t i = 0; i < symtab->bucket_size; ++i) {
         for(struct symbol_table_entry *head = symtab->buckets[i]; head != NULL; head = head->next) {
-            printf("[ %-20s | 0x%08X | 0x%02X | 0x%02X | %-10s ]---> ", head->key, head->offset, head->segment, 
+            printf("[ %-20s | 0x%08X | 0x%02X | 0x%02X | %-8s ]---> ", head->key, head->offset, head->segment, 
                     head->datasize, symtab_status_str[head->status]);
             
             if(head->next == NULL) printf("\n");

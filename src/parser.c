@@ -263,47 +263,18 @@ struct operand_node *operand_list_cfg() {
     return node;
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: verify_instruction
- * Purpose: Checks the instruction_node to see if a proper instruction was 
- * recognized based on the opcode table entry for the mnemonic. If an invalid
- * instruction is encountered, it will report the error to report_cfg.
- * @param instr -> Address of the instruction node structure
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-void verify_instruction(struct instruction_node *instr) {
-    if(instr == NULL || instr->mnemonic == NULL) return;
-
-    /* Verify operand list */
-    struct operand_node *operand = instr->operand_list;
-    for(int i = 0; i < 3; ++i) {
-        if(((struct opcode_entry *)instr->mnemonic->attrptr)->operand[i] == OPERAND_NONE) {
-            if(operand != NULL) report_cfg("Instruction '%s' takes too many operands on line %ld", instr->mnemonic->id, cfg_parser->lineno);
-            break;
-        } else {
-            if(operand == NULL || (((struct opcode_entry *)instr->mnemonic->attrptr)->operand[i] & operand->operand) == 0) {
-                report_cfg("Invalid operand combiniation for instruction '%s' on line %ld", instr->mnemonic->id, cfg_parser->lineno);
-                break;
-            }
-            if((((struct opcode_entry *)instr->mnemonic->attrptr)->operand[i] & OPERAND_LABEL)) {
-                if(get_symbol_table(symbol_table, operand->identifier) == NULL) {
-                    insert_front(cfg_parser->sym_list, insert_symbol_table(symbol_table, operand->identifier));
-                }
-            }
-        }
-        operand = operand->next;
-    }
-}
-
-void check_directive(struct reserved_entry *directive, struct operand_node *operand_list) {
+int verify_operand_list(struct reserved_entry *res_entry, struct operand_node *operand_list) {
     /* Verify operand list */
     struct operand_node *current_operand = operand_list;
-    struct opcode_entry *entry = directive->attrptr;
+    struct opcode_entry *entry = (struct opcode_entry *)res_entry->attrptr;
 
-    for(int i = 0; i < 3; ++i) {
+    const char *op_string = res_entry->token == TOK_DIRECTIVE ? "directive" : "mnemonic";
+
+    for(int i = 0; i < MAX_OPERAND_COUNT; ++i) {
         if(entry->operand[i] & OPERAND_REPEAT) {
             if(current_operand == NULL || !(entry->operand[i] & current_operand->operand)) {
-                report_cfg("Invalid operand combination for directive '%s' on line %ld", directive->id, cfg_parser->lineno);
-                return;
+                report_cfg("Invalid operand combination for %s '%s' on line %ld", op_string, res_entry->id, cfg_parser->lineno - 1);
+                return 0;
             }
             
             /* Check for more operands in repeat... */
@@ -314,27 +285,67 @@ void check_directive(struct reserved_entry *directive, struct operand_node *oper
         } else {
             if(entry->operand[i] == OPERAND_NONE) {
                 if(current_operand != NULL) {
-                    report_cfg("Invalid operand combiniation for directive '%s' on line %ld", directive->id, cfg_parser->lineno);
-                    return;
+                    report_cfg("Invalid operand combiniation for %s '%s' on line %ld", op_string, res_entry->id, cfg_parser->lineno - 1);
+                    return 0;
                 }
                 break;
             } else {
                 if(current_operand == NULL || !(entry->operand[i] & current_operand->operand)) {
-                    report_cfg("Invalid operand combiniation for directive '%s' on line %ld", directive->id, cfg_parser->lineno);
-                    return;
+                    report_cfg("Invalid operand combiniation for %s '%s' on line %ld", op_string, res_entry->id, cfg_parser->lineno - 1);
+                    return 0;
                 }
             }
             current_operand = current_operand->next;
         }
     }
 
+    return 1;
+}
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Function: verify_instruction
+ * Purpose: Checks the instruction_node to see if a proper instruction was 
+ * recognized based on the opcode table entry for the mnemonic. If an invalid
+ * instruction is encountered, it will report the error to report_cfg.
+ * @param instr -> Address of the instruction node structure
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+void verify_instruction(struct instruction_node *instr) {
+    if(instr == NULL || instr->mnemonic == NULL) return;
+
+    if(!verify_operand_list(instr->mnemonic, instr->operand_list)) return;
+    // **************** Keeping this for now... need to add support for symbol table entry in verify_operand_list ... *****************************
+    // /* Verify operand list */
+    // struct operand_node *operand = instr->operand_list;
+    // for(int i = 0; i < MAX_OPERAND_COUNT; ++i) {
+    //     if(((struct opcode_entry *)instr->mnemonic->attrptr)->operand[i] == OPERAND_NONE) {
+    //         if(operand != NULL) report_cfg("Instruction '%s' takes too many operands on line %ld", instr->mnemonic->id, cfg_parser->lineno);
+    //         break;
+    //     } else {
+    //         if(operand == NULL || (((struct opcode_entry *)instr->mnemonic->attrptr)->operand[i] & operand->operand) == 0) {
+    //             report_cfg("Invalid operand combiniation for instruction '%s' on line %ld", instr->mnemonic->id, cfg_parser->lineno);
+    //             break;
+    //         }
+    //         if((((struct opcode_entry *)instr->mnemonic->attrptr)->operand[i] & OPERAND_LABEL)) {
+    //             if(get_symbol_table(symbol_table, operand->identifier) == NULL) {
+    //                 insert_front(cfg_parser->sym_list, insert_symbol_table(symbol_table, operand->identifier));
+    //             }
+    //         }
+    //     }
+    //     operand = operand->next;
+    // }
+}
+
+void check_directive(struct reserved_entry *directive, struct operand_node *operand_list) {
+    struct opcode_entry *entry = (struct opcode_entry *)directive->attrptr;
+
+    if(!verify_operand_list(directive, operand_list)) return;
+
     switch(entry->opcode) {
         case DIRECTIVE_INCLUDE: {
             /* Create tokenizer structure */
             struct tokenizer *tokenizer = create_tokenizer(operand_list->identifier);
             if(tokenizer == NULL) {
-                fprintf(stderr, "%s: Error: %s\n", operand_list->identifier, strerror(errno));
-                cfg_parser->status = PARSER_STATUS_FAIL;
+                report_cfg("Failed to include file '%s' on line %ld : %s", operand_list->identifier, cfg_parser->lineno - 1, strerror(errno));
             } else {
                 insert_front(cfg_parser->tokenizer_queue, (void *)tokenizer);
                 cfg_parser->tokenizer = tokenizer;
@@ -349,10 +360,17 @@ void check_directive(struct reserved_entry *directive, struct operand_node *oper
             cfg_parser->segment = SEGMENT_DATA;
             break;
         case DIRECTIVE_ALIGN: {
-            int multiple = 1 << operand_list->value.integer;
-            int remainder = cfg_parser->LC % multiple;
-            if(remainder != 0)
-                cfg_parser->LC = cfg_parser->LC + multiple - remainder;
+            if(operand_list->value.integer < 0 || operand_list->value.integer >= 31) {
+                report_cfg("Directive '.align n' expects n to be within the range of [0, 31] on line %ld", cfg_parser->lineno - 1);
+            }
+            else if(operand_list->value.integer == 0) {
+                /* TO-DO: Disable automatic alignment of .half, .word. .dword directives until next .data segment */
+            }
+            else {
+                unsigned int multiple = 1 << operand_list->value.integer;
+                unsigned int remainder = cfg_pars   er->LC & (multiple - 1);
+                if(remainder) cfg_parser->LC = cfg_parser->LC + multiple - remainder; 
+            }
             break;
         }
     }

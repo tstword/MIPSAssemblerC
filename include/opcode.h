@@ -100,6 +100,8 @@
 #define DIRECTIVE_ASCIIZ   0x3D
 #define DIRECTIVE_BYTE     0x3E
 #define DIRECTIVE_ALIGN    0x3F
+#define DIRECTIVE_HALF     0x40
+#define DIRECTIVE_WORD     0x41
 
 /* Opcode type flags */
 #define OPTYPE_DEFAULT    0x0
@@ -114,6 +116,8 @@
 #define OPERAND_ADDRESS    0x08
 #define OPERAND_STRING     0x10
 #define OPERAND_REPEAT     0x20
+
+#define MAX_OPERAND_COUNT  0x03
 
 /* Defines the operands that the mnemonic can take */
 #define OPFORMAT_NONE           { OPERAND_NONE, OPERAND_NONE, OPERAND_NONE              }
@@ -131,6 +135,7 @@
 #define OPFORMAT_STR_REP        { OPERAND_STRING | OPERAND_REPEAT, OPERAND_NONE, OPERAND_NONE }
 #define OPFORMAT_IMM_REP        { OPERAND_IMMEDIATE | OPERAND_REPEAT, OPERAND_NONE, OPERAND_NONE }
 #define OPFORMAT_STRING         { OPERAND_STRING, OPERAND_NONE, OPERAND_NONE }
+#define OPFORMAT_IMM_LAB_REP    { OPERAND_IMMEDIATE | OPERAND_LABEL | OPERAND_REPEAT, OPERAND_NONE, OPERAND_NONE }
 
 /* Type definitions */
 typedef unsigned int mnemonic_t;
