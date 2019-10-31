@@ -368,7 +368,7 @@ void check_directive(struct reserved_entry *directive, struct operand_node *oper
             }
             else {
                 unsigned int multiple = 1 << operand_list->value.integer;
-                unsigned int remainder = cfg_pars   er->LC & (multiple - 1);
+                unsigned int remainder = cfg_parser->LC & (multiple - 1);
                 if(remainder) cfg_parser->LC = cfg_parser->LC + multiple - remainder; 
             }
             break;
