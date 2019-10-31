@@ -95,7 +95,8 @@ int match_cfg(token_t token) {
         cfg_parser->lineno = cfg_parser->tokenizer->lineno;
         cfg_parser->colno = cfg_parser->tokenizer->colno;
         cfg_parser->lookahead = get_next_token(cfg_parser->tokenizer);
-    } else {
+    } 
+    else {
         report_cfg("Expected %s on line %ld, col %ld", get_token_str(token), cfg_parser->lineno, cfg_parser->colno);
         return 0;
     }
@@ -136,18 +137,21 @@ void label_cfg() {
                 if(entry->status != SYMBOL_UNDEFINED) {
                     entry->status = SYMBOL_DOUBLY;
                     report_cfg("Multiple definitions of label '%s' on line %ld, col %ld", id, cfg_parser->lineno, cfg_parser->colno);
-                } else {
+                } 
+                else {
                     entry->offset = cfg_parser->LC;
                     entry->segment = cfg_parser->segment;
                     entry->status = SYMBOL_DEFINED;
                 }
-            } else { 
+            } 
+            else { 
                 entry = insert_symbol_table(symbol_table, id);
                 entry->offset = cfg_parser->LC;
                 entry->segment = cfg_parser->segment;
                 entry->status = SYMBOL_DEFINED;
             }
-        } else {
+        } 
+        else {
             report_cfg("Unrecognized mnemonic '%s' on line %ld, col %ld", id, cfg_parser->lineno, cfg_parser->colno);
         }
         free(id);
@@ -218,8 +222,8 @@ struct operand_node *operand_cfg() {
             }
             break;
         }
-		case TOK_EOL:
-		case TOK_NULL:
+        case TOK_EOL:
+        case TOK_NULL:
 			report_cfg("Expected operand after line %ld, col %ld", cfg_parser->lineno, cfg_parser->colno);
 			break;
         default:
@@ -359,7 +363,8 @@ void check_directive(struct reserved_entry *directive, struct operand_node *oper
             struct tokenizer *tokenizer = create_tokenizer(operand_list->identifier);
             if(tokenizer == NULL) {
                 report_cfg("Failed to include file '%s' on line %ld : %s", operand_list->identifier, cfg_parser->lineno - 1, strerror(errno));
-            } else {
+            } 
+            else {
                 insert_front(cfg_parser->tokenizer_queue, (void *)tokenizer);
                 cfg_parser->tokenizer = tokenizer;
                 cfg_parser->lookahead = get_next_token(tokenizer);
