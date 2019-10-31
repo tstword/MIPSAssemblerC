@@ -263,7 +263,18 @@ struct operand_node *operand_list_cfg() {
     return node;
 }
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Function: verify_operand_list
+ * Purpose: Given an entry in the reserved table, it checks the operand list
+ * to see if it matches the corresponding operand format.
+ * @param res_entry    -> Address of the entry in the reserved table
+ *        operand_list -> Address of the start of the operand list
+ * @return 1 if operand list matches operand format, otherwise 0
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 int verify_operand_list(struct reserved_entry *res_entry, struct operand_node *operand_list) {
+    /* Check if reserved_entry is valid */
+    if(res_entry->token != TOK_MNEMONIC && res_entry->token != TOK_DIRECTIVE) return 0;
+
     /* Verify operand list */
     struct operand_node *current_operand = operand_list;
     struct opcode_entry *entry = (struct opcode_entry *)res_entry->attrptr;
@@ -275,11 +286,17 @@ int verify_operand_list(struct reserved_entry *res_entry, struct operand_node *o
             if(current_operand == NULL || !(entry->operand[i] & current_operand->operand)) {
                 report_cfg("Invalid operand combination for %s '%s' on line %ld", op_string, res_entry->id, cfg_parser->lineno - 1);
                 return 0;
+            } 
+            if(current_operand->operand & OPERAND_LABEL) {
+                insert_front(cfg_parser->sym_list, insert_symbol_table(symbol_table, current_operand->identifier));
             }
             
             /* Check for more operands in repeat... */
             current_operand = current_operand->next;
             while(current_operand != NULL && entry->operand[i] & current_operand->operand) {
+                if(current_operand->operand & OPERAND_LABEL) {
+                    insert_front(cfg_parser->sym_list, insert_symbol_table(symbol_table, current_operand->identifier));
+                }
                 current_operand = current_operand->next;
             }
         } else {
@@ -294,6 +311,9 @@ int verify_operand_list(struct reserved_entry *res_entry, struct operand_node *o
                     report_cfg("Invalid operand combiniation for %s '%s' on line %ld", op_string, res_entry->id, cfg_parser->lineno - 1);
                     return 0;
                 }
+                if(current_operand->operand & OPERAND_LABEL) {
+                    insert_front(cfg_parser->sym_list, insert_symbol_table(symbol_table, current_operand->identifier));
+                }
             }
             current_operand = current_operand->next;
         }
@@ -303,39 +323,32 @@ int verify_operand_list(struct reserved_entry *res_entry, struct operand_node *o
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: verify_instruction
+ * Function: check_instruction
  * Purpose: Checks the instruction_node to see if a proper instruction was 
  * recognized based on the opcode table entry for the mnemonic. If an invalid
  * instruction is encountered, it will report the error to report_cfg.
  * @param instr -> Address of the instruction node structure
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-void verify_instruction(struct instruction_node *instr) {
+void check_instruction(struct instruction_node *instr) {
     if(instr == NULL || instr->mnemonic == NULL) return;
 
     if(!verify_operand_list(instr->mnemonic, instr->operand_list)) return;
-    // **************** Keeping this for now... need to add support for symbol table entry in verify_operand_list ... *****************************
-    // /* Verify operand list */
-    // struct operand_node *operand = instr->operand_list;
-    // for(int i = 0; i < MAX_OPERAND_COUNT; ++i) {
-    //     if(((struct opcode_entry *)instr->mnemonic->attrptr)->operand[i] == OPERAND_NONE) {
-    //         if(operand != NULL) report_cfg("Instruction '%s' takes too many operands on line %ld", instr->mnemonic->id, cfg_parser->lineno);
-    //         break;
-    //     } else {
-    //         if(operand == NULL || (((struct opcode_entry *)instr->mnemonic->attrptr)->operand[i] & operand->operand) == 0) {
-    //             report_cfg("Invalid operand combiniation for instruction '%s' on line %ld", instr->mnemonic->id, cfg_parser->lineno);
-    //             break;
-    //         }
-    //         if((((struct opcode_entry *)instr->mnemonic->attrptr)->operand[i] & OPERAND_LABEL)) {
-    //             if(get_symbol_table(symbol_table, operand->identifier) == NULL) {
-    //                 insert_front(cfg_parser->sym_list, insert_symbol_table(symbol_table, operand->identifier));
-    //             }
-    //         }
-    //     }
-    //     operand = operand->next;
-    // }
+
+    /* TO-DO: Assemble (?) instruction */
 }
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Function: check_directive
+ * Purpose: Checks the directive recognized from the CFG. Ensures that the
+ * operands recognized are of the correct format. If successfully recognized,
+ * the function attempts to execute the directive.
+ * @param directive    -> Address of the entry in the reserved table
+ *        operand_list -> Address of the first operand in the operand list
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 void check_directive(struct reserved_entry *directive, struct operand_node *operand_list) {
+    /* Check if entry is directive */
+    if(directive->token != TOK_DIRECTIVE) return;
+
     struct opcode_entry *entry = (struct opcode_entry *)directive->attrptr;
 
     if(!verify_operand_list(directive, operand_list)) return;
@@ -364,7 +377,7 @@ void check_directive(struct reserved_entry *directive, struct operand_node *oper
                 report_cfg("Directive '.align n' expects n to be within the range of [0, 31] on line %ld", cfg_parser->lineno - 1);
             }
             else if(operand_list->value.integer == 0) {
-                /* TO-DO: Disable automatic alignment of .half, .word. .dword directives until next .data segment */
+                /* TO-DO: Disable automatic alignment of .half, .word, directives until next .data segment */
             }
             else {
                 unsigned int multiple = 1 << operand_list->value.integer;
@@ -391,6 +404,7 @@ struct instruction_node *instruction_cfg() {
         case TOK_DIRECTIVE: {
             struct reserved_entry *entry = cfg_parser->tokenizer->attrptr;
             struct operand_node *op_list = NULL;
+
             match_cfg(TOK_DIRECTIVE);
             switch(cfg_parser->lookahead) {
                 case TOK_IDENTIFIER:
@@ -431,6 +445,9 @@ struct instruction_node *instruction_cfg() {
                     node->operand_list = NULL;
             }
             end_line_cfg();
+
+            check_instruction(node);
+
             if(((struct opcode_entry *)node->mnemonic->attrptr)->type == OPTYPE_PSUEDO) {
 				cfg_parser->LC += ((struct opcode_entry *)node->mnemonic->attrptr)->size;
 			} else {
@@ -444,8 +461,6 @@ struct instruction_node *instruction_cfg() {
         default:
             report_cfg("Unexpected %s on line %ld, col %ld", get_token_str(cfg_parser->lookahead), cfg_parser->lineno, cfg_parser->colno);
     }
-
-    verify_instruction(node);
 
     return node;
 }
