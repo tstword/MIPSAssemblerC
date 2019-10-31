@@ -67,6 +67,30 @@ void insert_rear(struct linked_list *list, void *value)
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Function: remove_front
+ * Purpose: Removes the first ListNode in the LinkedList
+ * @param list  -> Pointer to LinkedList structure.
+ *		  mode  -> LN_VDYNAMIC: Frees the values inside the ListNodes
+ *				   LN_VSTATIC:  Does not free the values inside the ListNodes
+ * @additional comments: Executes in O(1) time
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+void remove_front(struct linked_list *list, short mode) {
+	struct list_node *front = list->front;
+	
+	if(list->front == NULL) return;
+
+	if(list->front == list->rear)
+		list->front = list->rear = front->next;
+	else 
+		list->front = list->front->next;
+	
+	if(mode == LN_VDYNAMIC)
+		free(front->value);
+	
+	free(front);
+}
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Function: remove_from_list
  * Purpose: Removes the ListNode containing the unique value
  * @param list  -> Pointer to LinkedList structure.

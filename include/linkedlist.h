@@ -31,6 +31,7 @@ struct linked_list *create_list();
 
 void insert_front(struct linked_list *, void *);
 void insert_rear(struct linked_list *, void *);
+void remove_front(struct linked_list *, short);
 void remove_from_list(struct linked_list *, void *);
 
 void delete_linked_list(struct linked_list **, short);

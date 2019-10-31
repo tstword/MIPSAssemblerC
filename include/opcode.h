@@ -93,16 +93,27 @@
 #define MNEMONIC_MULT     0x37
 #define MNEMONIC_MULTU    0x38
 
+#define DIRECTIVE_INCLUDE  0x39
+#define DIRECTIVE_TEXT     0x3A
+#define DIRECTIVE_DATA     0x3B
+#define DIRECTIVE_ASCII    0x3C
+#define DIRECTIVE_ASCIIZ   0x3D
+#define DIRECTIVE_BYTE     0x3E
+#define DIRECTIVE_ALIGN    0x3F
+
 /* Opcode type flags */
 #define OPTYPE_DEFAULT    0x0
 #define OPTYPE_PSUEDO     0x1
+#define OPTYPE_DIRECTIVE  0x2
 
 /* Opcode operands flags */
-#define OPERAND_NONE       0x0
-#define OPERAND_LABEL      0x1
-#define OPERAND_IMMEDIATE  0x2
-#define OPERAND_REGISTER   0x4
-#define OPERAND_ADDRESS    0x8
+#define OPERAND_NONE       0x00
+#define OPERAND_LABEL      0x01
+#define OPERAND_IMMEDIATE  0x02
+#define OPERAND_REGISTER   0x04
+#define OPERAND_ADDRESS    0x08
+#define OPERAND_STRING     0x10
+#define OPERAND_REPEAT     0x20
 
 /* Defines the operands that the mnemonic can take */
 #define OPFORMAT_NONE           { OPERAND_NONE, OPERAND_NONE, OPERAND_NONE              }
@@ -113,9 +124,13 @@
 #define OPFORMAT_J_TYPE         { OPERAND_LABEL, OPERAND_NONE, OPERAND_NONE             }
 #define OPFORMAT_BRANCH_TYPE    { OPERAND_REGISTER, OPERAND_LABEL, OPERAND_NONE         }
 #define OPFORMAT_REGISTER       { OPERAND_REGISTER, OPERAND_NONE, OPERAND_NONE          }
+#define OPFORMAT_IMMEDIATE      { OPERAND_IMMEDIATE, OPERAND_NONE, OPERAND_NONE         }
 #define OPFORMAT_REG_IMM        { OPERAND_REGISTER, OPERAND_IMMEDIATE, OPERAND_NONE     }
 #define OPFORMAT_REG_REG        { OPERAND_REGISTER, OPERAND_REGISTER, OPERAND_NONE      }
 #define OPFORMAT_REG_LAB        { OPERAND_REGISTER, OPERAND_LABEL, OPERAND_NONE         }
+#define OPFORMAT_STR_REP        { OPERAND_STRING | OPERAND_REPEAT, OPERAND_NONE, OPERAND_NONE }
+#define OPFORMAT_IMM_REP        { OPERAND_IMMEDIATE | OPERAND_REPEAT, OPERAND_NONE, OPERAND_NONE }
+#define OPFORMAT_STRING         { OPERAND_STRING, OPERAND_NONE, OPERAND_NONE }
 
 /* Type definitions */
 typedef unsigned int mnemonic_t;
@@ -127,7 +142,7 @@ struct opcode_entry {
     unsigned char funct;            /* Instruction funct */
     unsigned char rt;               /* Used for specific instructions like BGEZAL */
     operand_t operand[3];           /* Specifies operand format */
-    unsigned char psuedo : 1;       /* Flag used to indicate psuedo instructions */
+    unsigned char type : 2;         /* Flag used to indicate instruction type */
 	unsigned char size   : 7;       /* If psuedo is 1, we need the size of the instruction */
 };
 

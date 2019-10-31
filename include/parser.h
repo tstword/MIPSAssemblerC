@@ -82,6 +82,7 @@ struct program_node {
 /* Parser structure definition */
 struct parser {
     struct tokenizer *tokenizer;            /* Address of current tokenizer */
+    struct linked_list *tokenizer_queue;    /* Queue of tokenizers */
 
     struct program_node *ast;               /* Root of the abstract syntax tree */
     struct linked_list *sym_list;           /* List of symbols that were referenced before definition */

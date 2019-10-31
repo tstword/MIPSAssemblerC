@@ -31,7 +31,7 @@ typedef enum { init_state, comma_accept, colon_accept, left_paren_accept,
                right_paren_accept, identifier_state, identifier_accept,
                integer_state, integer_accept, hex_state, zero_state,
                eof_accept, comment_state, comment_accept, negative_state,
-               string_state, string_accept, eol_accept, invalid_state, period_accept } state_fsm;
+               string_state, string_accept, eol_accept, invalid_state } state_fsm;
 
 /* Reserved keyword table */
 struct reserved_entry reserved_table[] = {
@@ -99,6 +99,13 @@ struct reserved_entry reserved_table[] = {
     { "$v0"     , TOK_REGISTER, .attrval = 2  },
     { "$v1"     , TOK_REGISTER, .attrval = 3  },
     { "$zero"   , TOK_REGISTER, .attrval = 0  },
+    { ".align"  , TOK_DIRECTIVE, opcode_table + DIRECTIVE_ALIGN   },
+    { ".ascii"  , TOK_DIRECTIVE, opcode_table + DIRECTIVE_ASCII   },
+    { ".asciiz" , TOK_DIRECTIVE, opcode_table + DIRECTIVE_ASCIIZ  },
+    { ".byte"   , TOK_DIRECTIVE, opcode_table + DIRECTIVE_BYTE    },
+    { ".data"   , TOK_DIRECTIVE, opcode_table + DIRECTIVE_DATA    },
+    { ".include", TOK_DIRECTIVE, opcode_table + DIRECTIVE_INCLUDE },
+    { ".text"   , TOK_DIRECTIVE, opcode_table + DIRECTIVE_TEXT    },
     { "add"     , TOK_MNEMONIC, opcode_table + MNEMONIC_ADD     },
     { "addi"    , TOK_MNEMONIC, opcode_table + MNEMONIC_ADDI    },
     { "addiu"   , TOK_MNEMONIC, opcode_table + MNEMONIC_ADDIU   },
@@ -279,10 +286,11 @@ state_fsm init_fsm(struct tokenizer *tokenizer) {
         case 'a' ... 'z':
         case '$':
         case '_':
-            return identifier_state;
         case '.':
-            return period_accept;
+            return identifier_state;
         case '"':
+            /* Ignore " character */
+            tokenizer->bufpos--;
             return string_state;
         case '#':
             return comment_state;
@@ -462,6 +470,8 @@ state_fsm string_fsm(struct tokenizer *tokenizer) {
 
     switch(ch) {
         case '"':
+            /* Ignore " character */
+            tokenizer->bufpos--;
             return string_accept;
         case EOF:
         case '\n':
@@ -503,7 +513,7 @@ token_t return_token(token_t token, struct tokenizer *tokenizer) {
         case TOK_IDENTIFIER:
             /* Perform lookup on reserved keyword table */
             if((entry = get_reserved_table(tokenizer->lexbuf)) != NULL) {
-                if(entry->token == TOK_MNEMONIC)
+                if(entry->token == TOK_MNEMONIC || entry->token == TOK_DIRECTIVE)
                     tokenizer->attrptr = entry;
                 else if(entry->token == TOK_REGISTER)
                     tokenizer->attrval = entry->attrval;
@@ -589,6 +599,9 @@ struct tokenizer *create_tokenizer(const char *file) {
     /* Set NULL attribute */
     tokenizer->attrptr = NULL;
 
+    /* Store filename */
+    tokenizer->filename = strdup(file);
+
     return tokenizer;
 }
 
@@ -651,8 +664,6 @@ token_t get_next_token(struct tokenizer *tokenizer) {
                 return return_token(TOK_RPAREN, tokenizer);
             case string_accept:
                 return return_token(TOK_STRING, tokenizer);
-            case period_accept:
-                return return_token(TOK_PERIOD, tokenizer);
             case eof_accept:
                 return return_token(TOK_NULL, tokenizer);
             case invalid_state:
@@ -673,6 +684,7 @@ void destroy_tokenizer(struct tokenizer **tokenizer) {
 
     /* Close reading file stream */
     fclose((*tokenizer)->fstream);
+    free((*tokenizer)->filename);
 
     /* Destory dynamically allocated data */
     free((*tokenizer)->lexbuf);
@@ -711,8 +723,8 @@ const char *get_token_str(token_t token) {
             return "')'";
         case TOK_EOL:
             return "end of line";
-        case TOK_PERIOD:
-            return "'.'";
+        case TOK_DIRECTIVE:
+            return "directive";
     }
     
     return NULL;

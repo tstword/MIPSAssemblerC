@@ -60,7 +60,7 @@ void printToken(token_t token, struct tokenizer *tokenizer) {
 
     if(token == TOK_MNEMONIC) {
         struct opcode_entry *entry = (struct opcode_entry *)tokenizer->attrptr;
-        printf("[ %d | %d | %d | %d ]\n", entry->opcode, entry->funct, entry->rt, entry->psuedo);
+        printf("[ %d | %d | %d | %d ]\n", entry->opcode, entry->funct, entry->rt, entry->type);
     }
 }
 

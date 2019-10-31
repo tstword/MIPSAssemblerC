@@ -11,7 +11,8 @@
  *                         <EOF>
  *
  *     instruction      -> label <EOL> | 
- *                         label <MNEMONIC> operand_list <EOL> | 
+ *                         label <MNEMONIC> operand_list <EOL>  | 
+                           label <DIRECTIVE> operand_list <EOL> |
  *                         <EOL> ; NO-OP
  *
  *     operand_list     -> operand <COMMA> operand_list | 
@@ -22,7 +23,7 @@
  *                         <INTEGER>    |
  *                         <INTEGER> <LPAREN> <REGISTER> <RPAREN>
  *                    
- *     label            -> <ID> <COLON>
+ *     label            -> <ID> <COLON> | epsilon
  *
  * Failure in parsing the tokens is indicated by the macro PARSER_STATUS_FAIL
  * Success in parsing the tokens is indicated by the macro PARSER_STATUS_OK
@@ -69,8 +70,8 @@ void report_cfg(const char *fmt, ...) {
     cfg_parser->status = PARSER_STATUS_FAIL;
 
     /* Check if tokenizer failed, otherwise CFG failed */
-    if(cfg_parser->lookahead == TOK_INVALID) fprintf(stderr, "%s: Error: %s\n", (const char*)cfg_parser->current_file->value, cfg_parser->tokenizer->errmsg);
-    else if(buffer != NULL) fprintf(stderr, "%s: Error: %s\n", (const char*)cfg_parser->current_file->value, buffer);
+    if(cfg_parser->lookahead == TOK_INVALID) fprintf(stderr, "%s: Error: %s\n", cfg_parser->tokenizer->filename, cfg_parser->tokenizer->errmsg);
+    else if(buffer != NULL) fprintf(stderr, "%s: Error: %s\n", cfg_parser->tokenizer->filename, buffer);
 
     /* Recover and skip to next line to retrieve extra data */
     while(cfg_parser->lookahead != TOK_EOL && cfg_parser->lookahead != TOK_NULL) {
@@ -187,6 +188,17 @@ struct operand_node *operand_cfg() {
             
             break;
         }
+        case TOK_STRING: {
+            char *id = strdup(cfg_parser->tokenizer->lexbuf);
+            match_cfg(TOK_STRING);
+            
+            node = malloc(sizeof(struct operand_node));
+            node->operand = OPERAND_STRING;
+            node->identifier = id;
+            node->next = NULL;
+            
+            break;
+        }
         case TOK_INTEGER: {
             int value = cfg_parser->tokenizer->attrval;
             match_cfg(TOK_INTEGER);
@@ -230,6 +242,7 @@ struct operand_node *operand_list_cfg() {
         case TOK_REGISTER:
         case TOK_IDENTIFIER:
         case TOK_INTEGER:
+        case TOK_STRING:
             node = operand_cfg();
             if(cfg_parser->lookahead == TOK_COMMA) {
                 match_cfg(TOK_COMMA);
@@ -281,6 +294,70 @@ void verify_instruction(struct instruction_node *instr) {
     }
 }
 
+void check_directive(struct reserved_entry *directive, struct operand_node *operand_list) {
+    /* Verify operand list */
+    struct operand_node *current_operand = operand_list;
+    struct opcode_entry *entry = directive->attrptr;
+
+    for(int i = 0; i < 3; ++i) {
+        if(entry->operand[i] & OPERAND_REPEAT) {
+            if(current_operand == NULL || !(entry->operand[i] & current_operand->operand)) {
+                report_cfg("Invalid operand combination for directive '%s' on line %ld", directive->id, cfg_parser->lineno);
+                return;
+            }
+            
+            /* Check for more operands in repeat... */
+            current_operand = current_operand->next;
+            while(current_operand != NULL && entry->operand[i] & current_operand->operand) {
+                current_operand = current_operand->next;
+            }
+        } else {
+            if(entry->operand[i] == OPERAND_NONE) {
+                if(current_operand != NULL) {
+                    report_cfg("Invalid operand combiniation for directive '%s' on line %ld", directive->id, cfg_parser->lineno);
+                    return;
+                }
+                break;
+            } else {
+                if(current_operand == NULL || !(entry->operand[i] & current_operand->operand)) {
+                    report_cfg("Invalid operand combiniation for directive '%s' on line %ld", directive->id, cfg_parser->lineno);
+                    return;
+                }
+            }
+            current_operand = current_operand->next;
+        }
+    }
+
+    switch(entry->opcode) {
+        case DIRECTIVE_INCLUDE: {
+            /* Create tokenizer structure */
+            struct tokenizer *tokenizer = create_tokenizer(operand_list->identifier);
+            if(tokenizer == NULL) {
+                fprintf(stderr, "%s: Error: %s\n", operand_list->identifier, strerror(errno));
+                cfg_parser->status = PARSER_STATUS_FAIL;
+            } else {
+                insert_front(cfg_parser->tokenizer_queue, (void *)tokenizer);
+                cfg_parser->tokenizer = tokenizer;
+                cfg_parser->lookahead = get_next_token(tokenizer);
+            }
+            break;
+        }
+        case DIRECTIVE_TEXT: 
+            cfg_parser->segment = SEGMENT_TEXT;
+            break;
+        case DIRECTIVE_DATA:
+            cfg_parser->segment = SEGMENT_DATA;
+            break;
+        case DIRECTIVE_ALIGN: {
+            int multiple = 1 << operand_list->value.integer;
+            int remainder = cfg_parser->LC % multiple;
+            if(remainder != 0)
+                cfg_parser->LC = cfg_parser->LC + multiple - remainder;
+            break;
+        }
+    }
+}
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Function: instruction_cfg
  * Purpose: Attempts to match the non-terminal for instruction. If failed to match
@@ -290,32 +367,36 @@ void verify_instruction(struct instruction_node *instr) {
 struct instruction_node *instruction_cfg() {
     struct instruction_node *node = NULL;
 
+    if(cfg_parser->lookahead == TOK_IDENTIFIER) label_cfg();
+
     switch(cfg_parser->lookahead) {
-        case TOK_IDENTIFIER:
-            label_cfg();
-            if(cfg_parser->lookahead == TOK_MNEMONIC) {            
-                node = malloc(sizeof(struct instruction_node));
-                node->mnemonic = cfg_parser->tokenizer->attrptr;
-                node->next = NULL;
-                
-                match_cfg(TOK_MNEMONIC);
-                switch(cfg_parser->lookahead) {
-                    case TOK_IDENTIFIER:
-                    case TOK_INTEGER:
-                    case TOK_REGISTER:
-                        node->operand_list = operand_list_cfg();
-                        break;
-                    default:
-                        node->operand_list = NULL;
-                }
-				if(((struct opcode_entry *)node->mnemonic->attrptr)->psuedo) {
-                	cfg_parser->LC += ((struct opcode_entry *)node->mnemonic->attrptr)->size;
-				} else {
-					cfg_parser->LC += 0x4;
-				}
+        case TOK_DIRECTIVE: {
+            struct reserved_entry *entry = cfg_parser->tokenizer->attrptr;
+            struct operand_node *op_list = NULL;
+            match_cfg(TOK_DIRECTIVE);
+            switch(cfg_parser->lookahead) {
+                case TOK_IDENTIFIER:
+                case TOK_INTEGER:
+                case TOK_STRING:
+                    op_list = operand_list_cfg();
+                    break;
+                default:
+                    op_list = NULL;
             }
             end_line_cfg();
+
+            check_directive(entry, op_list);
+
+            /* Delete operand list */
+            struct operand_node *op_node = op_list;
+            while(op_node != NULL) {
+                struct operand_node *next_op = op_node->next;
+                if(op_node->operand == OPERAND_LABEL || op_node->operand == OPERAND_STRING) free(op_node->identifier);
+                free(op_node);
+                op_node = next_op;
+            }
             break;
+        }
         case TOK_MNEMONIC:
             node = malloc(sizeof(struct instruction_node));
             node->mnemonic = cfg_parser->tokenizer->attrptr;
@@ -332,7 +413,7 @@ struct instruction_node *instruction_cfg() {
                     node->operand_list = NULL;
             }
             end_line_cfg();
-            if(((struct opcode_entry *)node->mnemonic->attrptr)->psuedo) {
+            if(((struct opcode_entry *)node->mnemonic->attrptr)->type == OPTYPE_PSUEDO) {
 				cfg_parser->LC += ((struct opcode_entry *)node->mnemonic->attrptr)->size;
 			} else {
 				cfg_parser->LC += 0x4;
@@ -359,6 +440,22 @@ struct instruction_node *instruction_cfg() {
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 struct instruction_node *instruction_list_cfg() {
     struct instruction_node *node = NULL;
+    
+    while(cfg_parser->lookahead == TOK_NULL) {
+        /* Free current tokenizer */
+        destroy_tokenizer(&cfg_parser->tokenizer);
+        remove_front(cfg_parser->tokenizer_queue, LN_VSTATIC);
+
+        /* No more files to process */
+        if(cfg_parser->tokenizer_queue->front == NULL) return node;    
+        
+        /* Setup tokenizer */
+        cfg_parser->tokenizer = cfg_parser->tokenizer_queue->front->value;
+
+        /* Setup lookahead */
+        cfg_parser->lookahead = get_next_token(cfg_parser->tokenizer);
+    }
+    
     if(cfg_parser->lookahead != TOK_NULL) {
         node = instruction_cfg();
         if(node != NULL)
@@ -366,6 +463,7 @@ struct instruction_node *instruction_list_cfg() {
         else
             node = instruction_list_cfg();
     }
+
     return node;
 }
 
@@ -389,15 +487,14 @@ struct program_node *program_cfg(struct parser *parser) {
 struct parser *create_parser(int file_count, const char **file_arr) {
     struct parser *parser = malloc(sizeof(struct parser));
 
-    parser->tokenizer = NULL;
-    parser->src_files = create_list();
+    parser->tokenizer_queue = NULL;
 
+    parser->src_files = create_list();
     /* Setup source files */
     for(int i = 0; i < file_count; ++i) {
         insert_rear(parser->src_files, (void *)file_arr[i]);
     }
 
-    parser->current_file = parser->src_files->front;
     parser->lookahead = TOK_NULL;
     parser->sym_list = create_list();
     parser->status = PARSER_STATUS_NULL;
@@ -419,57 +516,35 @@ struct parser *create_parser(int file_count, const char **file_arr) {
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 pstatus_t execute_parser(struct parser *parser) {  
     /* Setup initial tokenizer structure */
-    if(parser->current_file == NULL) {
+    if(parser->src_files->front == NULL) {
         fprintf(stderr, "Input: No source files to assemble\n");
         parser->status = PARSER_STATUS_FAIL;
         return parser->status;
     }
-    
-    /* Go through entire source files */
-    while(parser->current_file != NULL) {
-        /* Setup tokenizer */
-        parser->tokenizer = create_tokenizer((const char *)parser->current_file->value);
-        
-        if(parser->tokenizer == NULL) {
-            fprintf(stderr, "%s: File does not exist or cannot be opened\n", (const char *)parser->current_file->value);
-            cfg_parser->status = PARSER_STATUS_FAIL;
-            return cfg_parser->status;
+
+    /* Create initial tokenizer queue */
+    parser->tokenizer_queue = create_list();
+    struct list_node *file = parser->src_files->front;
+    while(file != NULL) {
+        struct tokenizer *tokenizer = create_tokenizer((const char *)file->value);
+        if(tokenizer == NULL) {
+            fprintf(stderr, "%s: Error: %s\n", (const char *)file->value, strerror(errno));
+            parser->status = PARSER_STATUS_FAIL;
+            delete_linked_list(&(parser->tokenizer_queue), LN_VSTATIC);
+            return parser->status;
         }
-
-        /* Setup lookahead */
-        parser->lookahead = get_next_token(parser->tokenizer);
-
-        /* Start grammar recognization... */
-        parser->ast = program_cfg(parser);
-
-        /* Destory AST */
-        struct instruction_node *instr_node = parser->ast ? parser->ast->instruction_list : NULL;
-        /* Free instructions */
-        while(instr_node != NULL) {
-            struct instruction_node *next_instr = instr_node->next;
-            /* Free operands */
-            struct operand_node *op_node = instr_node->operand_list;
-            while(op_node != NULL) {
-                struct operand_node *next_op = op_node->next;
-                if(op_node->operand == OPERAND_LABEL) free(op_node->identifier);
-                free(op_node);
-                op_node = next_op;
-            }
-            free(instr_node);
-            instr_node = next_instr;
-        }
-
-        /* Free AST */
-        free(parser->ast);
-
-        parser->ast = NULL;
-
-        /* Delete tokenizer structure */
-        destroy_tokenizer(&(parser->tokenizer));
-
-        /* Get next file in the file list */
-        parser->current_file = parser->current_file->next;
+        insert_rear(parser->tokenizer_queue, tokenizer);
+        file = file->next;
     }
+
+    /* Setup tokenizer */
+    parser->tokenizer = parser->tokenizer_queue->front->value;
+
+    /* Setup lookahead */
+    parser->lookahead = get_next_token(parser->tokenizer);
+
+    /* Start grammar recognization... */
+    parser->ast = program_cfg(parser);
     
     /* Verify undefined symbol table */
     for(struct list_node *head = parser->sym_list->front; head != NULL; head = head->next) {
@@ -484,6 +559,8 @@ pstatus_t execute_parser(struct parser *parser) {
     if(parser->status == PARSER_STATUS_NULL) {
         parser->status = PARSER_STATUS_OK;
     }
+
+    delete_linked_list(&(parser->tokenizer_queue), LN_VSTATIC);
 
     return parser->status;
 }
