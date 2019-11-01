@@ -39,6 +39,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <stdarg.h>
+#include <ctype.h>
 
 /* Global variable used for parsing grammar */
 struct parser *cfg_parser = NULL;
@@ -82,6 +83,54 @@ void report_cfg(const char *fmt, ...) {
     free(buffer);
 }
 
+void inc_segment_offset(offset_t offset) {
+    if(cfg_parser->segment == SEGMENT_TEXT) {
+        cfg_parser->segtext_offset += offset;
+    }
+    else if(cfg_parser->segment == SEGMENT_DATA) {
+        cfg_parser->segdata_offset += offset;
+    }
+}
+
+void align_segment_offset(int n) {
+    /* Check bounds for sll */
+    if(n < 0 || n >= 31) return;
+
+    unsigned int divend = 1 << n;
+
+    if(cfg_parser->segment == SEGMENT_TEXT) {
+        if(cfg_parser->segtext_offset & (divend - 1)) {
+            cfg_parser->segtext_offset += divend - (cfg_parser->segtext_offset & (divend - 1));
+        }
+    }  
+    else if (cfg_parser->segment == SEGMENT_DATA) {
+        if(cfg_parser->segdata_offset & (divend - 1)) {
+            cfg_parser->segdata_offset += divend - (cfg_parser->segdata_offset & (divend - 1));
+        }
+    }
+}
+
+void write_segment_memory(void *buf, size_t size) {
+    if(cfg_parser->segment == SEGMENT_TEXT) {
+        if(cfg_parser->segtext_offset + size > cfg_parser->mem_segtext_size) {
+            cfg_parser->mem_segtext_size <<= 1;
+            cfg_parser->mem_segtext = realloc(cfg_parser->mem_segtext, cfg_parser->mem_segtext_size);
+        }
+        for(int i = 0; i < size; ++i) {
+            cfg_parser->mem_segtext[cfg_parser->segtext_offset + i] = *((unsigned char *)buf + i);
+        }
+    }
+    else if(cfg_parser->segment == SEGMENT_DATA) {
+        if(cfg_parser->segdata_offset + size > cfg_parser->mem_segdata_size) {
+            cfg_parser->mem_segdata_size <<= 1;
+            cfg_parser->mem_segdata = realloc(cfg_parser->mem_segdata, cfg_parser->mem_segdata_size);
+        }
+        for(int i = 0; i < size; ++i) {
+            cfg_parser->mem_segdata[cfg_parser->segdata_offset + i] = *((unsigned char *)buf + i);
+        }
+    }
+}
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Function: match_cfg
  * Purpose: Checks if the most recent token returned by the tokenizer matches
@@ -114,6 +163,7 @@ void end_line_cfg() {
             match_cfg(TOK_EOL);
             break;
         case TOK_NULL:
+            cfg_parser->lineno++;
             break;
         default:
             report_cfg("Unexpected %s on line %ld, col %ld", get_token_str(cfg_parser->lookahead), cfg_parser->lineno, cfg_parser->colno);
@@ -139,14 +189,20 @@ void label_cfg() {
                     report_cfg("Multiple definitions of label '%s' on line %ld, col %ld", id, cfg_parser->lineno, cfg_parser->colno);
                 } 
                 else {
-                    entry->offset = cfg_parser->LC;
+                    if(cfg_parser->segment == SEGMENT_TEXT)
+                        entry->offset = cfg_parser->segtext_offset;
+                    else if(cfg_parser->segment == SEGMENT_DATA)
+                        entry->offset = cfg_parser->segdata_offset;
                     entry->segment = cfg_parser->segment;
                     entry->status = SYMBOL_DEFINED;
                 }
             } 
             else { 
                 entry = insert_symbol_table(symbol_table, id);
-                entry->offset = cfg_parser->LC;
+                if(cfg_parser->segment == SEGMENT_TEXT)
+                    entry->offset = cfg_parser->segtext_offset;
+                else if(cfg_parser->segment == SEGMENT_DATA)
+                    entry->offset = cfg_parser->segdata_offset;
                 entry->segment = cfg_parser->segment;
                 entry->status = SYMBOL_DEFINED;
             }
@@ -288,35 +344,38 @@ int verify_operand_list(struct reserved_entry *res_entry, struct operand_node *o
     for(int i = 0; i < MAX_OPERAND_COUNT; ++i) {
         if(entry->operand[i] & OPERAND_REPEAT) {
             if(current_operand == NULL || !(entry->operand[i] & current_operand->operand)) {
-                report_cfg("Invalid operand combination for %s '%s' on line %ld", op_string, res_entry->id, cfg_parser->lineno - 1);
+                report_cfg("Invalid operand combination for %s '%s' on line %ld", op_string, res_entry->id, cfg_parser->lineno);
                 return 0;
             } 
             if(current_operand->operand & OPERAND_LABEL) {
-                insert_front(cfg_parser->sym_list, insert_symbol_table(symbol_table, current_operand->identifier));
+                if(get_symbol_table(symbol_table, current_operand->identifier) == NULL)
+                    insert_front(cfg_parser->ref_symlist, insert_symbol_table(symbol_table, current_operand->identifier));
             }
             
             /* Check for more operands in repeat... */
             current_operand = current_operand->next;
             while(current_operand != NULL && entry->operand[i] & current_operand->operand) {
                 if(current_operand->operand & OPERAND_LABEL) {
-                    insert_front(cfg_parser->sym_list, insert_symbol_table(symbol_table, current_operand->identifier));
+                    if(get_symbol_table(symbol_table, current_operand->identifier) == NULL)
+                        insert_front(cfg_parser->ref_symlist, insert_symbol_table(symbol_table, current_operand->identifier));
                 }
                 current_operand = current_operand->next;
             }
         } else {
             if(entry->operand[i] == OPERAND_NONE) {
                 if(current_operand != NULL) {
-                    report_cfg("Invalid operand combiniation for %s '%s' on line %ld", op_string, res_entry->id, cfg_parser->lineno - 1);
+                    report_cfg("Invalid operand combiniation for %s '%s' on line %ld", op_string, res_entry->id, cfg_parser->lineno);
                     return 0;
                 }
                 break;
             } else {
                 if(current_operand == NULL || !(entry->operand[i] & current_operand->operand)) {
-                    report_cfg("Invalid operand combiniation for %s '%s' on line %ld", op_string, res_entry->id, cfg_parser->lineno - 1);
+                    report_cfg("Invalid operand combiniation for %s '%s' on line %ld", op_string, res_entry->id, cfg_parser->lineno);
                     return 0;
                 }
                 if(current_operand->operand & OPERAND_LABEL) {
-                    insert_front(cfg_parser->sym_list, insert_symbol_table(symbol_table, current_operand->identifier));
+                    if(get_symbol_table(symbol_table, current_operand->identifier) == NULL)
+                        insert_front(cfg_parser->ref_symlist, insert_symbol_table(symbol_table, current_operand->identifier));
                 }
             }
             current_operand = current_operand->next;
@@ -339,6 +398,17 @@ void check_instruction(struct instruction_node *instr) {
     if(!verify_operand_list(instr->mnemonic, instr->operand_list)) return;
 
     /* TO-DO: Assemble (?) instruction */
+    if(cfg_parser->segment == SEGMENT_DATA) {
+        report_cfg("Cannot define instructions in .data segment on line %ld", cfg_parser->lineno);
+        return;
+    }
+
+    /* Finally increment LC */
+    if(((struct opcode_entry *)instr->mnemonic->attrptr)->type == OPTYPE_PSUEDO) {
+		inc_segment_offset(((struct opcode_entry *)instr->mnemonic->attrptr)->size);
+	} else {
+		inc_segment_offset(0x4);
+	}
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -357,12 +427,25 @@ void check_directive(struct reserved_entry *directive, struct operand_node *oper
 
     if(!verify_operand_list(directive, operand_list)) return;
 
+    /* Check if segment is text before handling directive */
+    switch(entry->opcode) {
+        case DIRECTIVE_ASCII:
+        case DIRECTIVE_ASCIIZ:
+        case DIRECTIVE_HALF:
+        case DIRECTIVE_BYTE:
+            if(cfg_parser->segment != SEGMENT_DATA) {
+                report_cfg("Directive '%s' is not allowed in the .text segment on line %ld", directive->id, cfg_parser->lineno);
+                return;
+            }
+            break;
+    }
+
     switch(entry->opcode) {
         case DIRECTIVE_INCLUDE: {
             /* Create tokenizer structure */
             struct tokenizer *tokenizer = create_tokenizer(operand_list->identifier);
             if(tokenizer == NULL) {
-                report_cfg("Failed to include file '%s' on line %ld : %s", operand_list->identifier, cfg_parser->lineno - 1, strerror(errno));
+                report_cfg("Failed to include file '%s' on line %ld : %s", operand_list->identifier, cfg_parser->lineno, strerror(errno));
             } 
             else {
                 insert_front(cfg_parser->tokenizer_queue, (void *)tokenizer);
@@ -379,16 +462,56 @@ void check_directive(struct reserved_entry *directive, struct operand_node *oper
             break;
         case DIRECTIVE_ALIGN: {
             if(operand_list->value.integer < 0 || operand_list->value.integer >= 31) {
-                report_cfg("Directive '.align n' expects n to be within the range of [0, 31] on line %ld", cfg_parser->lineno - 1);
+                report_cfg("Directive '.align n' expects n to be within the range of [0, 31] on line %ld", cfg_parser->lineno);
             }
             else if(operand_list->value.integer == 0) {
                 /* TO-DO: Disable automatic alignment of .half, .word, directives until next .data segment */
             }
             else {
-                unsigned int multiple = 1 << operand_list->value.integer;
-                unsigned int remainder = cfg_parser->LC & (multiple - 1);
-                if(remainder) cfg_parser->LC = cfg_parser->LC + multiple - remainder; 
+                align_segment_offset(operand_list->value.integer);
             }
+            break;
+        }
+        case DIRECTIVE_WORD: {
+            struct operand_node *current_operand = operand_list;
+            while(current_operand != NULL) {
+                int value = current_operand->value.integer;
+                write_segment_memory((void *)&value, 0x4);
+                inc_segment_offset(0x4);
+                current_operand = current_operand->next;
+            }
+            break;
+        }
+        case DIRECTIVE_HALF: {
+            struct operand_node *current_operand = operand_list;
+            while(current_operand != NULL) {
+                int value = current_operand->value.integer;
+                write_segment_memory((void *)&value, 0x2);
+                inc_segment_offset(0x4);
+                current_operand = current_operand->next;
+            }
+            break;
+        }
+        case DIRECTIVE_BYTE: {
+            struct operand_node *current_operand = operand_list;
+            while(current_operand != NULL) {
+                int value = current_operand->value.integer;
+                write_segment_memory((void *)&value, 0x1);
+                inc_segment_offset(0x1);
+                current_operand = current_operand->next;
+            }
+            break;
+        }
+        case DIRECTIVE_ASCII: {
+            offset_t length = strlen(operand_list->identifier);
+            write_segment_memory((void *)operand_list->identifier, length);
+            inc_segment_offset(length);
+            break;
+        }
+        case DIRECTIVE_ASCIIZ: {
+            offset_t length = strlen(operand_list->identifier) + 1;
+            write_segment_memory((void *)operand_list->identifier, length);
+            inc_segment_offset(length);
             break;
         }
     }
@@ -420,7 +543,6 @@ struct instruction_node *instruction_cfg() {
                 default:
                     op_list = NULL;
             }
-            end_line_cfg();
 
             check_directive(entry, op_list);
 
@@ -432,6 +554,8 @@ struct instruction_node *instruction_cfg() {
                 free(op_node);
                 op_node = next_op;
             }
+
+            end_line_cfg();
             break;
         }
         case TOK_MNEMONIC:
@@ -449,15 +573,11 @@ struct instruction_node *instruction_cfg() {
                 default:
                     node->operand_list = NULL;
             }
-            end_line_cfg();
 
             check_instruction(node);
 
-            if(((struct opcode_entry *)node->mnemonic->attrptr)->type == OPTYPE_PSUEDO) {
-				cfg_parser->LC += ((struct opcode_entry *)node->mnemonic->attrptr)->size;
-			} else {
-				cfg_parser->LC += 0x4;
-			}
+            end_line_cfg();
+
             break;
         case TOK_EOL:
         case TOK_NULL:
@@ -534,13 +654,16 @@ struct parser *create_parser(int file_count, const char **file_arr) {
     }
 
     parser->lookahead = TOK_NULL;
-    parser->sym_list = create_list();
+    parser->ref_symlist = create_list();
     parser->status = PARSER_STATUS_NULL;
     parser->lineno = 1;
     parser->colno = 1;
-    parser->LC = 0x00000000;
+    parser->segtext_offset = 0x00000000;
+    parser->segdata_offset = 0x00000000;
     parser->ast = NULL;
     parser->segment = SEGMENT_TEXT;
+    parser->mem_segtext = NULL;
+    parser->mem_segdata = NULL;
     
     return parser;
 }
@@ -581,11 +704,19 @@ pstatus_t execute_parser(struct parser *parser) {
     /* Setup lookahead */
     parser->lookahead = get_next_token(parser->tokenizer);
 
+    /* Allocate memory size for segment text (start with a page) */
+    parser->mem_segtext_size = 1024;
+    parser->mem_segtext = malloc(parser->mem_segtext_size);
+
+    /* Allocate memory size for segment data (start with a page) */
+    parser->mem_segdata_size = 1024;
+    parser->mem_segdata = malloc(parser->mem_segdata_size);
+
     /* Start grammar recognization... */
     parser->ast = program_cfg(parser);
     
     /* Verify undefined symbol table */
-    for(struct list_node *head = parser->sym_list->front; head != NULL; head = head->next) {
+    for(struct list_node *head = parser->ref_symlist->front; head != NULL; head = head->next) {
         symstat_t status = ((struct symbol_table_entry *)head->value)->status;
         if(status == SYMBOL_UNDEFINED) {
             /* Symbol is still undefined, program cannot be assembled */
@@ -598,6 +729,38 @@ pstatus_t execute_parser(struct parser *parser) {
         parser->status = PARSER_STATUS_OK;
     }
 
+    #ifdef DEBUG
+    if(parser->status == PARSER_STATUS_OK) {
+        printf("[ BEGIN SEGMENT DATA ]");
+        for(int i = 0; i < parser->segdata_offset; i++) {
+            if(i % 4 == 0) {
+                printf("\n");
+                printf("0x%08X  ", i);
+            }
+            unsigned char c = *((unsigned char *)parser->mem_segdata + i);
+            if(isprint(c)) printf("'%c' ", c);
+            else printf("\\%2X ", c);
+        
+        }
+        printf("\n[ END SEGMENT DATA ]\n\n");
+        printf("[ BEGIN SEGMENT TEXT ]");
+        for(int i = 0; i < parser->segtext_offset; i++) {
+            if(i % 4 == 0) {
+                printf("\n");
+                printf("0x%08X  ", i);
+            }
+            unsigned char c = *((unsigned char *)parser->mem_segtext + i);
+            if(isprint(c)) printf("'%c' ", c);
+            else printf("\\%2X ", c);
+        
+        }
+        printf("\n[ END SEGMENT TEXT ]\n\n");
+    }
+    #endif
+
+    /* Free used data */
+    free(parser->mem_segtext);
+    free(parser->mem_segdata);
     delete_linked_list(&(parser->tokenizer_queue), LN_VSTATIC);
 
     return parser->status;
@@ -632,7 +795,7 @@ void destroy_parser(struct parser **parser) {
 
     /* Free linked list */
     delete_linked_list(&((*parser)->src_files), LN_VSTATIC);
-    delete_linked_list(&((*parser)->sym_list), LN_VSTATIC);
+    delete_linked_list(&((*parser)->ref_symlist), LN_VSTATIC);
 
     /* Simple free the data */
     free(*parser);
