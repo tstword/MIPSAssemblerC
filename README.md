@@ -1,7 +1,36 @@
 # C MIPS Assembler
+
 A MIPS assembler written in C. 
-I began work on this project during my free time as a grader for I&CS 51 at the University of California, Irvine and eventually grew attached.
+I began work on this project during my free time as a grader for ICS 51 at the University of California, Irvine and eventually grew attached.
 What was the motive, you may ask: The MARS simulator is wonderful IDE however, it takes forever to load into memory and execute. Normally this isn't an issue but because I had to run scripts on over 150+ submissions and each submission took about ~3 minutes to execute all ~40 test cases I sought out to create a MIPS assembler in C for faster results.
 
-## Prequisites
-C compiler (Developed using GCC 5.4)
+## Getting Started
+
+Clone the project into a directory, compile, and execute
+```
+git clone https://github.com/tstword/NewMIPSAssembler MIPSAssembler
+cd MIPSAssembler
+make
+bin/assembler [input files]
+```
+
+### Prerequisites
+
+C Compiler (Devloped and Tested using GCC 5.4)
+GNU Make Utility
+
+```
+sudo apt-get install -y gcc make
+```
+
+### Installing
+
+Change into the directory containing the source code
+```
+cd MIPSAssembler
+```
+
+Compile using the Make Utility
+```
+make
+```
