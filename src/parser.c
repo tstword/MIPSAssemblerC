@@ -32,6 +32,12 @@
  * @version: 1.0 (8/28/2019)
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+ /* * * * * * * * * * * * * * * * *
+  * TO-DO: The different segment offsets and memory locations make the code confusing to read. Instead
+  * have #define SEGMENT_TEXT 0x0 and #define SEGMENT_DATA 0x1 and make arrays for the offset, memory
+  * location and sizes 
+  * * * * * * * * * * * * * * * * */
+
 #include "parser.h"
 
 #include <stdio.h>
@@ -123,7 +129,8 @@ void write_segment_memory(void *buf, size_t size) {
             }
         }
         memcpy(cfg_parser->mem_segtext + cfg_parser->segtext_offset, buf, size);
-        cfg_parser->mem_segtext_len += size;
+        if(cfg_parser->mem_segtext_len < cfg_parser->segtext_offset + size)
+            cfg_parser->mem_segtext_len = cfg_parser->segtext_offset + size;
     }
     else if(cfg_parser->segment == SEGMENT_DATA) {
         if(cfg_parser->segdata_offset + size > cfg_parser->mem_segdata_size) {
@@ -135,7 +142,8 @@ void write_segment_memory(void *buf, size_t size) {
             }
         }
         memcpy(cfg_parser->mem_segdata + cfg_parser->segdata_offset, buf, size);
-        cfg_parser->mem_segdata_len += size;
+        if(cfg_parser->mem_segdata_len < cfg_parser->segdata_offset + size)
+            cfg_parser->mem_segdata_len = cfg_parser->segdata_offset + size;
     }
 }
 
@@ -609,7 +617,10 @@ void check_instruction(struct instruction_node *instr) {
  * @param directive    -> Address of the entry in the reserved table
  *        operand_list -> Address of the first operand in the operand list
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-void check_directive(struct reserved_entry *directive, struct operand_node *operand_list) {
+void check_directive(struct instruction_node *instr) {
+    struct reserved_entry *directive = instr->mnemonic;
+    struct operand_node *operand_list = instr->operand_list;
+
     /* Check if entry is directive */
     if(directive->token != TOK_DIRECTIVE) return;
 
@@ -665,9 +676,30 @@ void check_directive(struct reserved_entry *directive, struct operand_node *oper
         case DIRECTIVE_WORD: {
             struct operand_node *current_operand = operand_list;
             while(current_operand != NULL) {
-                int value = current_operand->value.integer;
-                write_segment_memory((void *)&value, 0x4);
-                inc_segment_offset(0x4);
+                if(current_operand->operand & OPERAND_LABEL) {
+                    /* Check if label has been defined */
+                    printf("DIRECTIVE: OPERAND FOUND\n");
+                    struct symbol_table_entry *sym_entry = get_symbol_table(symbol_table, current_operand->identifier);
+                    if(sym_entry == NULL) {
+                        insert_front(cfg_parser->ref_symlist, insert_symbol_table(symbol_table, current_operand->identifier));
+                        insert_front(sym_entry->instr_list, (void *)instr);
+                    }
+                    else {
+                        if(sym_entry->status == SYMBOL_UNDEFINED) {
+                            insert_front(sym_entry->instr_list, (void *)instr);
+                        }
+                        else {
+                            offset_t sym_offset = sym_entry->offset;
+                            write_segment_memory((void *)&sym_offset, 0x4);
+                            inc_segment_offset(0x4);
+                        }   
+                    }
+                }
+                else {
+                    int value = current_operand->value.integer;
+                    write_segment_memory((void *)&value, 0x4);
+                    inc_segment_offset(0x4);
+                }
                 current_operand = current_operand->next;
             }
             break;
@@ -720,38 +752,39 @@ struct instruction_node *instruction_cfg() {
 
     switch(cfg_parser->lookahead) {
         case TOK_DIRECTIVE: {
-            struct reserved_entry *entry = cfg_parser->tokenizer->attrptr;
-            struct operand_node *op_list = NULL;
+            node = malloc(sizeof(struct instruction_node));
+            node->mnemonic = cfg_parser->tokenizer->attrptr;
+            if(cfg_parser->segment == SEGMENT_TEXT) {
+                node->offset = cfg_parser->segtext_offset;
+            }
+            else {
+                node->offset = cfg_parser->segdata_offset;
+            }
+            node->segment = cfg_parser->segment;
+            node->next = NULL;
 
             match_cfg(TOK_DIRECTIVE);
             switch(cfg_parser->lookahead) {
                 case TOK_IDENTIFIER:
                 case TOK_INTEGER:
                 case TOK_STRING:
-                    op_list = operand_list_cfg();
+                    node->operand_list = operand_list_cfg();
                     break;
                 default:
-                    op_list = NULL;
+                    node->operand_list = NULL;
             }
 
             end_line_cfg();
 
-            check_directive(entry, op_list);
+            check_directive(node);
 
-            /* Delete operand list */
-            struct operand_node *op_node = op_list;
-            while(op_node != NULL) {
-                struct operand_node *next_op = op_node->next;
-                if(op_node->operand == OPERAND_LABEL || op_node->operand == OPERAND_STRING) free(op_node->identifier);
-                free(op_node);
-                op_node = next_op;
-            }
             break;
         }
         case TOK_MNEMONIC:
             node = malloc(sizeof(struct instruction_node));
             node->mnemonic = cfg_parser->tokenizer->attrptr;
             node->offset = cfg_parser->segtext_offset;
+            node->segment = cfg_parser->segment;
             node->next = NULL;
             
             match_cfg(TOK_MNEMONIC);
@@ -825,6 +858,7 @@ struct program_node *program_cfg(struct parser *parser) {
     cfg_parser = parser;
     struct program_node *node = malloc(sizeof(struct program_node));
     node->instruction_list = instruction_list_cfg();
+    
     /* Verify undefined symbol table */
     for(struct list_node *head = parser->ref_symlist->front; head != NULL; head = head->next) {
         struct symbol_table_entry *sym_entry = (struct symbol_table_entry *)head->value;
@@ -836,8 +870,18 @@ struct program_node *program_cfg(struct parser *parser) {
         } else {
             struct list_node *instr_ref = sym_entry->instr_list->front;
             while(instr_ref != NULL) {
-                parser->segtext_offset = ((struct instruction_node *)instr_ref->value)->offset;
-                check_instruction(instr_ref->value); 
+                if(((struct instruction_node *)instr_ref->value)->mnemonic->token == TOK_MNEMONIC) {
+                    printf("INSTRUCTION_FOUND\n");
+                    parser->segment = ((struct instruction_node *)instr_ref->value)->segment;
+                    parser->segtext_offset = ((struct instruction_node *)instr_ref->value)->offset;
+                    check_instruction(instr_ref->value); 
+                }
+                else if(((struct instruction_node *)instr_ref->value)->mnemonic->token == TOK_DIRECTIVE) {
+                    printf("DIRECTIVE FOUND\n");
+                    parser->segment = ((struct instruction_node *)instr_ref->value)->segment;
+                    parser->segdata_offset = ((struct instruction_node *)instr_ref->value)->offset;
+                    check_directive(instr_ref->value); 
+                }
                 instr_ref = instr_ref->next;
             }
         }

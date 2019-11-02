@@ -126,7 +126,7 @@ struct symbol_table_entry *insert_symbol_table(struct symbol_table *symtab, cons
     item->key = strdup(key);
     item->status = SYMBOL_UNDEFINED;
     item->offset = 0x00;
-    item->segment = 0x00;
+    item->segment = SEGMENT_TEXT; /* Default is SEGMENT_TEXT */
     item->datasize = 0x00;
     item->instr_list = create_list();
     item->next = NULL;
@@ -200,12 +200,13 @@ void destroy_symbol_table(struct symbol_table **symtabp) {
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 void print_symbol_table(struct symbol_table *symtab) {
     const char *symtab_status_str[3] = { "UNDEFINED", "DEFINED", "DOUBLY" };
+     const char *segment_str[2] = { "TEXT", "DATA" };
 
     printf("===== Symbol Table =====\n");
 
     for(size_t i = 0; i < symtab->bucket_size; ++i) {
         for(struct symbol_table_entry *head = symtab->buckets[i]; head != NULL; head = head->next) {
-            printf("[ %-20s | 0x%08X | 0x%02X | 0x%02X | %-8s ]---> ", head->key, head->offset, head->segment, 
+            printf("[ %-20s | 0x%08X | %4s | 0x%02X | %-8s ]---> ", head->key, head->offset, segment_str[head->segment], 
                     head->datasize, symtab_status_str[head->status]);
             
             if(head->next == NULL) printf("\n");

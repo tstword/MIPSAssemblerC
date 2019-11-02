@@ -73,6 +73,7 @@ struct instruction_node {
     struct reserved_entry *mnemonic;
     struct operand_node *operand_list;
     offset_t offset;
+    segment_t segment;
     struct instruction_node *next;
 };
 
@@ -101,6 +102,13 @@ struct parser {
 
     unsigned char          *mem_segtext;        /* Memory set aside for segment text */
     unsigned char          *mem_segdata;        /* Memory set aside for segment data */
+    
+    /* TO-DO: Implement with these 
+     * unsigned char        *segment_memory[MAX_SEGMENTS];
+     * offset_t             *segment_offset[MAX_SEGMENTS];
+     * size_t               *segment_memory_len;
+     * size_t               *segment_memory_size;
+     */
 
     size_t                 mem_segtext_len;     /* Length of memory for segment text */
     size_t                 mem_segdata_len;     /* Length of memory for segment data */

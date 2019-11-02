@@ -26,9 +26,11 @@
 #include "linkedlist.h"
 
 /* Marco definitions... */
-#define SEGMENT_NULL        0x0
-#define SEGMENT_TEXT        0x1
-#define SEGMENT_DATA        0x2
+#define SEGMENT_TEXT        0x0
+#define SEGMENT_DATA        0x1
+
+/* The total number of segments */
+#define MAX_SEGMENTS        0x2
 
 #define OFFSET_BYTE         0x1
 #define OFFSET_HALFWORD     0x2
