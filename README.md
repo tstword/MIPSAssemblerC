@@ -6,18 +6,9 @@ What was the motive, you may ask: The MARS simulator is wonderful IDE however, i
 
 ## Getting Started
 
-Clone the project into a directory, compile, and execute
+Clone the project into a directory
 ```
 git clone https://github.com/tstword/NewMIPSAssembler MIPSAssembler
-```
-```
-cd MIPSAssembler
-```
-```
-make
-```
-```
-bin/assembler [input files]
 ```
 
 ### Prerequisites
