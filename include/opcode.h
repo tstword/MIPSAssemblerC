@@ -148,7 +148,7 @@ struct opcode_entry {
     unsigned char rt;               /* Used for specific instructions like BGEZAL */
     operand_t operand[3];           /* Specifies operand format */
     unsigned char type : 2;         /* Flag used to indicate instruction type */
-	unsigned char size   : 7;       /* If psuedo is 1, we need the size of the instruction */
+	unsigned char size : 7;       /* If psuedo is 1, we need the size of the instruction */
 };
 
 /* global reference to opcode table */

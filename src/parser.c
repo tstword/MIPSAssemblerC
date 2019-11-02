@@ -41,6 +41,8 @@
 #include <stdarg.h>
 #include <ctype.h>
 
+#include "instruction.h"
+
 /* Global variable used for parsing grammar */
 struct parser *cfg_parser = NULL;
 
@@ -113,21 +115,25 @@ void align_segment_offset(int n) {
 void write_segment_memory(void *buf, size_t size) {
     if(cfg_parser->segment == SEGMENT_TEXT) {
         if(cfg_parser->segtext_offset + size > cfg_parser->mem_segtext_size) {
-            cfg_parser->mem_segtext_size <<= 1;
+            cfg_parser->mem_segtext_size += 1024;
             cfg_parser->mem_segtext = realloc(cfg_parser->mem_segtext, cfg_parser->mem_segtext_size);
+            if(cfg_parser->mem_segtext == NULL) {
+                fprintf(stderr, "Segment Text Memory Error: %s\n", strerror(errno));
+                return;
+            }
         }
-        for(int i = 0; i < size; ++i) {
-            cfg_parser->mem_segtext[cfg_parser->segtext_offset + i] = *((unsigned char *)buf + i);
-        }
+        memcpy(cfg_parser->mem_segtext + cfg_parser->segtext_offset, buf, size);
     }
     else if(cfg_parser->segment == SEGMENT_DATA) {
         if(cfg_parser->segdata_offset + size > cfg_parser->mem_segdata_size) {
-            cfg_parser->mem_segdata_size <<= 1;
+            cfg_parser->mem_segdata_size += 1024;
             cfg_parser->mem_segdata = realloc(cfg_parser->mem_segdata, cfg_parser->mem_segdata_size);
+            if(cfg_parser->mem_segdata == NULL) {
+                fprintf(stderr, "Segment Data Memory Error: %s\n", strerror(errno));
+                return;
+            }
         }
-        for(int i = 0; i < size; ++i) {
-            cfg_parser->mem_segdata[cfg_parser->segdata_offset + i] = *((unsigned char *)buf + i);
-        }
+        memcpy(cfg_parser->mem_segdata + cfg_parser->segdata_offset, buf, size);
     }
 }
 
@@ -385,6 +391,97 @@ int verify_operand_list(struct reserved_entry *res_entry, struct operand_node *o
     return 1;
 }
 
+void assemble_funct_instruction(struct instruction_node *instr) {
+    instruction_t instruction = 0;
+
+    struct opcode_entry *entry = instr->mnemonic->attrptr;
+
+    switch(entry->funct) {
+        case 0x21:
+        case 0x24:
+        case 0x27:
+        case 0x25:
+        case 0x2A:
+        case 0x2B:
+        case 0x22:
+        case 0x23:
+        case 0x26:
+        case 0x20: {
+            struct operand_node *rd = instr->operand_list;
+            struct operand_node *rs = instr->operand_list->next;
+            struct operand_node *rt = instr->operand_list->next->next;
+            instruction = CREATE_INSTRUCTION_R(0, rs->value.reg, rt->value.reg, rd->value.reg, 0, entry->funct);
+            write_segment_memory((void *)&instruction, 0x4);
+            break; 
+        }
+
+        case 0x08: {
+            struct operand_node *rs = instr->operand_list;
+            instruction = CREATE_INSTRUCTION_R(0, rs->value.reg, 0, 0, 0, entry->funct);
+            write_segment_memory((void *)&instruction, 0x4);
+            break;
+        }
+
+        case 0x00:
+        case 0x03:
+        case 0x02: {
+            struct operand_node *rd = instr->operand_list;
+            struct operand_node *rt = instr->operand_list->next;
+            struct operand_node *shamt = instr->operand_list->next->next;
+            instruction = CREATE_INSTRUCTION_R(0, 0, rt->value.reg, rd->value.reg, shamt->value.integer, entry->funct);
+            write_segment_memory((void *)&instruction, 0x4);
+            break;
+        }
+
+        case 0x0C:
+            instruction = CREATE_INSTRUCTION_R(0, 0, 0, 0, 0, entry->funct);
+            write_segment_memory((void *)&instruction, 0x4);
+            break;
+
+        case 0x1A:
+        case 0x1B:
+        case 0x18:
+        case 0x19: {
+            struct operand_node *rs = instr->operand_list;
+            struct operand_node *rt = instr->operand_list->next;
+            instruction = CREATE_INSTRUCTION_R(0, rs->value.reg, rt->value.reg, 0, 0, entry->funct);
+            write_segment_memory((void *)&instruction, 0x4);
+            break;
+        }
+    }
+}
+
+void assemble_opcode_instruction(struct instruction_node *instr) {
+    instruction_t instruction = 0;
+
+    struct opcode_entry *entry = instr->mnemonic->attrptr;
+
+    switch(entry->opcode) {
+        case 0x08:
+        case 0x09:
+        case 0x0C:
+        case 0x0D:
+        case 0x0A:
+        case 0x0B:
+        case 0x0E: {
+            struct operand_node *rs = instr->operand_list;
+            struct operand_node *rt = instr->operand_list->next;
+            struct operand_node *imm = instr->operand_list->next->next;
+            instruction = CREATE_INSTRUCTION_I(entry->opcode, rs->value.reg, rt->value.reg, imm->value.integer);
+            write_segment_memory((void *)&instruction, 0x4);
+            break;
+        }
+
+        case 0x07:
+        case 0x06: {
+            struct operand_node *rs = instr->operand_list;
+            struct operand_node *label = instr->operand_list->next;
+            /* TO DO: Insert into symbol list */
+            break;
+        }
+    }
+}
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Function: check_instruction
  * Purpose: Checks the instruction_node to see if a proper instruction was 
@@ -401,6 +498,20 @@ void check_instruction(struct instruction_node *instr) {
     if(cfg_parser->segment == SEGMENT_DATA) {
         report_cfg("Cannot define instructions in .data segment on line %ld", cfg_parser->lineno);
         return;
+    }
+
+    struct opcode_entry *entry = instr->mnemonic->attrptr;
+
+    if(entry->type == OPTYPE_PSUEDO) {
+        //assemble_psuedo_instruction(instr);
+    }
+    else {
+        if(entry->opcode == 0x00) {
+            assemble_funct_instruction(instr);       
+        }
+        else {
+            assemble_opcode_instruction(instr);
+        }
     }
 
     /* Finally increment LC */
@@ -750,8 +861,7 @@ pstatus_t execute_parser(struct parser *parser) {
                 printf("0x%08X  ", i);
             }
             unsigned char c = *((unsigned char *)parser->mem_segtext + i);
-            if(isprint(c)) printf("'%c' ", c);
-            else printf("\\%2X ", c);
+            printf("\\%2X ", c);
         
         }
         printf("\n[ END SEGMENT TEXT ]\n\n");
