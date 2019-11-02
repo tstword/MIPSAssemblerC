@@ -463,7 +463,7 @@ void assemble_opcode_instruction(struct instruction_node *instr) {
         case 0x0D:
         case 0x0A:
         case 0x0B:
-        case 0x0E: {
+        case 0x0E: { /* ALU OP */
             struct operand_node *rs = instr->operand_list;
             struct operand_node *rt = instr->operand_list->next;
             struct operand_node *imm = instr->operand_list->next->next;
