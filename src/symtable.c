@@ -128,7 +128,7 @@ struct symbol_table_entry *insert_symbol_table(struct symbol_table *symtab, cons
     item->offset = 0x00;
     item->segment = 0x00;
     item->datasize = 0x00;
-    item->instr_list = NULL;
+    item->instr_list = create_list();
     item->next = NULL;
 
     size_t index = djb2hash(key) % symtab->bucket_size;
@@ -173,6 +173,7 @@ void destroy_symbol_table(struct symbol_table **symtabp) {
         struct symbol_table_entry *head = symtab->buckets[i];
         while(head != NULL) {
             struct symbol_table_entry *next_item = head->next;
+            delete_linked_list(&head->instr_list, LN_VSTATIC);
             free(head->key);
             free(head);
             head = next_item;

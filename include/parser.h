@@ -72,6 +72,7 @@ struct operand_node {
 struct instruction_node {
     struct reserved_entry *mnemonic;
     struct operand_node *operand_list;
+    offset_t offset;
     struct instruction_node *next;
 };
 
@@ -100,6 +101,9 @@ struct parser {
 
     unsigned char          *mem_segtext;        /* Memory set aside for segment text */
     unsigned char          *mem_segdata;        /* Memory set aside for segment data */
+
+    size_t                 mem_segtext_len;     /* Length of memory for segment text */
+    size_t                 mem_segdata_len;     /* Length of memory for segment data */
 
     size_t                 mem_segtext_size;    /* Size of memory for segment text */
     size_t                 mem_segdata_size;    /* Size of memory for segment data */

@@ -123,6 +123,7 @@ void write_segment_memory(void *buf, size_t size) {
             }
         }
         memcpy(cfg_parser->mem_segtext + cfg_parser->segtext_offset, buf, size);
+        cfg_parser->mem_segtext_len += size;
     }
     else if(cfg_parser->segment == SEGMENT_DATA) {
         if(cfg_parser->segdata_offset + size > cfg_parser->mem_segdata_size) {
@@ -134,6 +135,7 @@ void write_segment_memory(void *buf, size_t size) {
             }
         }
         memcpy(cfg_parser->mem_segdata + cfg_parser->segdata_offset, buf, size);
+        cfg_parser->mem_segdata_len += size;
     }
 }
 
@@ -472,11 +474,88 @@ void assemble_opcode_instruction(struct instruction_node *instr) {
             break;
         }
 
+        case 0x01:
         case 0x07:
         case 0x06: {
             struct operand_node *rs = instr->operand_list;
             struct operand_node *label = instr->operand_list->next;
-            /* TO DO: Insert into symbol list */
+            /* Check if label has been defined */
+            struct symbol_table_entry *sym_entry = get_symbol_table(symbol_table, label->identifier);
+            if(sym_entry == NULL) {
+                insert_front(cfg_parser->ref_symlist, insert_symbol_table(symbol_table, label->identifier));
+                insert_front(sym_entry->instr_list, (void *)instr);
+            }
+            else {
+                if(sym_entry->status == SYMBOL_UNDEFINED) {
+                    insert_front(sym_entry->instr_list, (void *)instr);
+                }
+                else {
+                    offset_t branch_offset = (sym_entry->offset - (cfg_parser->segtext_offset + 4)) >> 2;
+                    instruction = CREATE_INSTRUCTION_I(entry->opcode, rs->value.reg, entry->rt, branch_offset);
+                    write_segment_memory((void *)&instruction, 0x4);
+                }   
+            }
+            break;
+        }
+
+        case 0x05:
+        case 0x04: {
+            struct operand_node *rs = instr->operand_list;
+            struct operand_node *rt = instr->operand_list->next;
+            struct operand_node *label = instr->operand_list->next->next;
+            /* Check if label has been defined */
+            struct symbol_table_entry *sym_entry = get_symbol_table(symbol_table, label->identifier);
+            if(sym_entry == NULL) {
+                insert_front(cfg_parser->ref_symlist, insert_symbol_table(symbol_table, label->identifier));
+                insert_front(sym_entry->instr_list, (void *)instr);
+            }
+            else {
+                if(sym_entry->status == SYMBOL_UNDEFINED) {
+                    insert_front(sym_entry->instr_list, (void *)instr);
+                }
+                else {
+                    offset_t branch_offset = (sym_entry->offset - (cfg_parser->segtext_offset + 4)) >> 2;
+                    instruction = CREATE_INSTRUCTION_I(entry->opcode, rs->value.reg, rt->value.reg, branch_offset);
+                    write_segment_memory((void *)&instruction, 0x4);
+                }   
+            }
+            break;
+        }
+
+        case 0x02:
+        case 0x03: {
+            struct operand_node *label = instr->operand_list;
+            /* Check if label has been defined */
+            struct symbol_table_entry *sym_entry = get_symbol_table(symbol_table, label->identifier);
+            if(sym_entry == NULL) {
+                insert_front(cfg_parser->ref_symlist, insert_symbol_table(symbol_table, label->identifier));
+                insert_front(sym_entry->instr_list, (void *)instr);
+            }
+            else {
+                if(sym_entry->status == SYMBOL_UNDEFINED) {
+                    insert_front(sym_entry->instr_list, (void *)instr);
+                }
+                else {
+                    instruction = CREATE_INSTRUCTION_J(entry->opcode, (sym_entry->offset >> 2));
+                    write_segment_memory((void *)&instruction, 0x4);
+                }   
+            }
+            break;
+        }
+        
+
+        case 0x20:
+        case 0x24:
+        case 0x21:
+        case 0x25:
+        case 0x23: 
+        case 0x28: 
+        case 0x29:
+        case 0x2B: {
+            struct operand_node *rs = instr->operand_list;
+            struct operand_node *addr = instr->operand_list->next;
+            instruction = CREATE_INSTRUCTION_I(entry->opcode, rs->value.reg, addr->value.reg, addr->value.integer);
+            write_segment_memory((void *)&instruction, 0x4);
             break;
         }
     }
@@ -655,6 +734,8 @@ struct instruction_node *instruction_cfg() {
                     op_list = NULL;
             }
 
+            end_line_cfg();
+
             check_directive(entry, op_list);
 
             /* Delete operand list */
@@ -665,13 +746,12 @@ struct instruction_node *instruction_cfg() {
                 free(op_node);
                 op_node = next_op;
             }
-
-            end_line_cfg();
             break;
         }
         case TOK_MNEMONIC:
             node = malloc(sizeof(struct instruction_node));
             node->mnemonic = cfg_parser->tokenizer->attrptr;
+            node->offset = cfg_parser->segtext_offset;
             node->next = NULL;
             
             match_cfg(TOK_MNEMONIC);
@@ -685,9 +765,9 @@ struct instruction_node *instruction_cfg() {
                     node->operand_list = NULL;
             }
 
-            check_instruction(node);
-
             end_line_cfg();
+
+            check_instruction(node);
 
             break;
         case TOK_EOL:
@@ -745,6 +825,23 @@ struct program_node *program_cfg(struct parser *parser) {
     cfg_parser = parser;
     struct program_node *node = malloc(sizeof(struct program_node));
     node->instruction_list = instruction_list_cfg();
+    /* Verify undefined symbol table */
+    for(struct list_node *head = parser->ref_symlist->front; head != NULL; head = head->next) {
+        struct symbol_table_entry *sym_entry = (struct symbol_table_entry *)head->value;
+        symstat_t status = sym_entry->status;
+        if(status == SYMBOL_UNDEFINED) {
+            /* Symbol is still undefined, program cannot be assembled */
+            fprintf(stderr, "Symbol Error: Undefined symbol '%s'\n", ((struct symbol_table_entry *)head->value)->key);
+            parser->status = PARSER_STATUS_FAIL;
+        } else {
+            struct list_node *instr_ref = sym_entry->instr_list->front;
+            while(instr_ref != NULL) {
+                parser->segtext_offset = ((struct instruction_node *)instr_ref->value)->offset;
+                check_instruction(instr_ref->value); 
+                instr_ref = instr_ref->next;
+            }
+        }
+    }
     return node;
 }
 
@@ -775,6 +872,10 @@ struct parser *create_parser(int file_count, const char **file_arr) {
     parser->segment = SEGMENT_TEXT;
     parser->mem_segtext = NULL;
     parser->mem_segdata = NULL;
+    parser->mem_segtext_size = 0;
+    parser->mem_segdata_size = 0;
+    parser->mem_segdata_len = 0;
+    parser->mem_segtext_len = 0;
     
     return parser;
 }
@@ -825,16 +926,6 @@ pstatus_t execute_parser(struct parser *parser) {
 
     /* Start grammar recognization... */
     parser->ast = program_cfg(parser);
-    
-    /* Verify undefined symbol table */
-    for(struct list_node *head = parser->ref_symlist->front; head != NULL; head = head->next) {
-        symstat_t status = ((struct symbol_table_entry *)head->value)->status;
-        if(status == SYMBOL_UNDEFINED) {
-            /* Symbol is still undefined, program cannot be assembled */
-            fprintf(stderr, "Symbol Error: Undefined symbol '%s'\n", ((struct symbol_table_entry *)head->value)->key);
-            parser->status = PARSER_STATUS_FAIL;
-        }
-    }
 
     if(parser->status == PARSER_STATUS_NULL) {
         parser->status = PARSER_STATUS_OK;
@@ -843,7 +934,7 @@ pstatus_t execute_parser(struct parser *parser) {
     #ifdef DEBUG
     if(parser->status == PARSER_STATUS_OK) {
         printf("[ BEGIN SEGMENT DATA ]");
-        for(int i = 0; i < parser->segdata_offset; i++) {
+        for(int i = 0; i < parser->mem_segdata_len; i++) {
             if(i % 4 == 0) {
                 printf("\n");
                 printf("0x%08X  ", i);
@@ -855,7 +946,7 @@ pstatus_t execute_parser(struct parser *parser) {
         }
         printf("\n[ END SEGMENT DATA ]\n\n");
         printf("[ BEGIN SEGMENT TEXT ]");
-        for(int i = 0; i < parser->segtext_offset; i++) {
+        for(int i = 0; i < parser->mem_segtext_len; i++) {
             if(i % 4 == 0) {
                 printf("\n");
                 printf("0x%08X  ", i);

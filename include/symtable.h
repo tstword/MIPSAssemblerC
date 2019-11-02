@@ -23,6 +23,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+#include "linkedlist.h"
+
 /* Marco definitions... */
 #define SEGMENT_NULL        0x0
 #define SEGMENT_TEXT        0x1
@@ -37,13 +39,10 @@
 #define SYMBOL_DOUBLY       0x2
 
 /* Type definitions */
-typedef uint32_t offset_t;
+typedef int32_t  offset_t;
 typedef uint32_t segment_t;
 typedef uint16_t datasize_t;
 typedef uint8_t  symstat_t; 
-
-/* Forward declare instruction_node */
-struct instruction_node;
 
 struct symbol_table_entry {
     char *key;                              /* Identifier for label */
@@ -51,7 +50,7 @@ struct symbol_table_entry {
     offset_t offset;                        /* Offset from segment */
     segment_t segment;                      /* Segment */
     datasize_t datasize;                    /* Size of the data */
-    struct instruction_node *instr_list;    /* List of instructions that rely on this symbol that hasn't been defined */
+    struct linked_list *instr_list;         /* List of instructions that rely on this symbol that hasn't been defined */
     struct symbol_table_entry *next;        /* Pointer to next entry */
 };
 
