@@ -9,11 +9,14 @@ What was the motive, you may ask: The MARS simulator is wonderful IDE however, i
 Clone the project into a directory, compile, and execute
 ```
 git clone https://github.com/tstword/NewMIPSAssembler MIPSAssembler
-
+```
+```
 cd MIPSAssembler
-
+```
+```
 make
-
+```
+```
 bin/assembler [input files]
 ```
 
