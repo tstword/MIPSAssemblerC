@@ -372,6 +372,64 @@ int verify_operand_list(struct reserved_entry *res_entry, struct operand_node *o
     return 1;
 }
 
+void assemble_psuedo_instruction(struct instruction_node *instr) {
+    instruction_t instruction = 0;
+
+    struct opcode_entry *entry = instr->mnemonic->attrptr;
+
+    switch(entry->opcode) {
+        case 0x00: {
+            struct operand_node *rd = instr->operand_list;
+            struct operand_node *rs = instr->operand_list->next;
+            instruction = CREATE_INSTRUCTION_R(0, rs->value.reg, 0, rd->value.reg, 0, 0x25);
+            write_segment_memory((void *)&instruction, 0x4);
+            break;
+        }
+        case 0x01: {
+            struct operand_node *rd = instr->operand_list;
+            struct operand_node *imm = instr->operand_list->next;
+            uint32_t immediate = imm->value.integer;
+            printf("Immediate: 0x%08X\n", immediate);
+            if(((immediate >> 16) & 0xFFFF) != 0xFFFF && ((immediate >> 16) & 0xFFFF) != 0x0000) {
+                /* 32-bit sign extended or unsigned value */
+                instruction = CREATE_INSTRUCTION_I(0x0F, 0, rd->value.reg, (immediate >> 16));
+                write_segment_memory((void *)&instruction, 0x4);
+                inc_segment_offset(0x4);
+            }
+            instruction = CREATE_INSTRUCTION_I(0x0D, 0, rd->value.reg, immediate);
+            write_segment_memory((void *)&instruction, 0x4);
+            inc_segment_offset(0x4);
+            break;
+        }
+        case 0x02: {
+            struct operand_node *rd = instr->operand_list;
+            struct operand_node *label = instr->operand_list->next;
+            /* Check if label has been defined */
+            struct symbol_table_entry *sym_entry = get_symbol_table(symbol_table, label->identifier);
+            if(sym_entry == NULL) {
+                insert_front(cfg_parser->ref_symlist, insert_symbol_table(symbol_table, label->identifier));
+                insert_front(sym_entry->instr_list, (void *)instr);
+                inc_segment_offset(0x8);
+            }
+            else {
+                if(sym_entry->status == SYMBOL_UNDEFINED) {
+                    insert_front(sym_entry->instr_list, (void *)instr);
+                    inc_segment_offset(0x8);
+                }
+                else {
+                    instruction = CREATE_INSTRUCTION_I(0x0F, 0, rd->value.reg, (sym_entry->offset >> 16));
+                    write_segment_memory((void *)&instruction, 0x4);
+                    inc_segment_offset(0x4);
+                    instruction = CREATE_INSTRUCTION_I(0x0D, 0, rd->value.reg, sym_entry->offset);
+                    write_segment_memory((void *)&instruction, 0x4);
+                    inc_segment_offset(0x4);
+                }   
+            }
+            break;
+        }
+    }
+}
+
 void assemble_funct_instruction(struct instruction_node *instr) {
     instruction_t instruction = 0;
 
@@ -561,7 +619,7 @@ void check_instruction(struct instruction_node *instr) {
     struct opcode_entry *entry = instr->mnemonic->attrptr;
 
     if(entry->type == OPTYPE_PSUEDO) {
-        //assemble_psuedo_instruction(instr);
+        assemble_psuedo_instruction(instr);
     }
     else {
         if(entry->opcode == 0x00) {
