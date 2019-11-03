@@ -83,41 +83,27 @@ struct program_node {
 
 /* Parser structure definition */
 struct parser {
-    struct tokenizer       *tokenizer;          /* Address of current tokenizer */
-    struct linked_list     *tokenizer_queue;    /* Queue of tokenizers */
+    struct tokenizer       *tokenizer;                      /* Address of current tokenizer */
+    struct linked_list     *tokenizer_queue;                /* Queue of tokenizers */
     
-    struct program_node    *ast;                /* Root of the abstract syntax tree */
+    struct program_node    *ast;                            /* Root of the abstract syntax tree */
     
-    struct linked_list     *ref_symlist;        /* List of symbols that were referenced before definition */
+    struct linked_list     *ref_symlist;                    /* List of symbols that were referenced before definition */
+    struct linked_list     *src_files;                      /* List of source file strings */
     
-    struct linked_list     *src_files;          /* List of source file strings */
+    unsigned char          *segment_memory[MAX_SEGMENTS];   /* Memory set aside for segment */
     
-    segment_t              segment;             /* Indication of current segment */
+    segment_t              segment;                         /* Indication of current segment */
 
-    token_t                lookahead;           /* Required for LL(1) grammar */
-    pstatus_t              status;              /* Indicates the status of the parser */
+    token_t                lookahead;                       /* Required for LL(1) grammar */
+    pstatus_t              status;                          /* Indicates the status of the parser */
     
-    offset_t               segtext_offset;      /* Offset used for segment text */
-    offset_t               segdata_offset;      /* Offset used for segment data */ 
-
-    unsigned char          *mem_segtext;        /* Memory set aside for segment text */
-    unsigned char          *mem_segdata;        /* Memory set aside for segment data */
+    offset_t               segment_offset[MAX_SEGMENTS];    /* Offset used for segment */
+    size_t                 seg_memory_len[MAX_SEGMENTS];    /* Length of memory for segment */
+    size_t                 seg_memory_size[MAX_SEGMENTS];   /* Size of memory for segment */
     
-    /* TO-DO: Implement with these 
-     * unsigned char        *segment_memory[MAX_SEGMENTS];
-     * offset_t             *segment_offset[MAX_SEGMENTS];
-     * size_t               *segment_memory_len;
-     * size_t               *segment_memory_size;
-     */
-
-    size_t                 mem_segtext_len;     /* Length of memory for segment text */
-    size_t                 mem_segdata_len;     /* Length of memory for segment data */
-
-    size_t                 mem_segtext_size;    /* Size of memory for segment text */
-    size_t                 mem_segdata_size;    /* Size of memory for segment data */
-    
-    size_t                 lineno;              /* Line number of where the tokenizer last left off */
-    size_t                 colno;               /* Column number of where the tokenizer last left off */
+    size_t                 lineno;                          /* Line number of where the tokenizer last left off */
+    size_t                 colno;                           /* Column number of where the tokenizer last left off */
 };
 
 /* Function prototypes */

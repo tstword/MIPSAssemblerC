@@ -91,59 +91,36 @@ void report_cfg(const char *fmt, ...) {
     free(buffer);
 }
 
-void inc_segment_offset(offset_t offset) {
-    if(cfg_parser->segment == SEGMENT_TEXT) {
-        cfg_parser->segtext_offset += offset;
-    }
-    else if(cfg_parser->segment == SEGMENT_DATA) {
-        cfg_parser->segdata_offset += offset;
-    }
+void inc_segment_offset(offset_t offset) {\
+    cfg_parser->segment_offset[cfg_parser->segment] += offset;
 }
 
-void align_segment_offset(int n) {
+void align_segment_offset(uint32_t n) {
     /* Check bounds for sll */
-    if(n < 0 || n >= 31) return;
+    if(n >= 31) return;
 
-    unsigned int divend = 1 << n;
+    uint32_t dividend = 1 << n;
+    uint32_t remainder = cfg_parser->segment_offset[cfg_parser->segment] & (dividend - 1);
 
-    if(cfg_parser->segment == SEGMENT_TEXT) {
-        if(cfg_parser->segtext_offset & (divend - 1)) {
-            cfg_parser->segtext_offset += divend - (cfg_parser->segtext_offset & (divend - 1));
-        }
-    }  
-    else if (cfg_parser->segment == SEGMENT_DATA) {
-        if(cfg_parser->segdata_offset & (divend - 1)) {
-            cfg_parser->segdata_offset += divend - (cfg_parser->segdata_offset & (divend - 1));
-        }
+    if(remainder != 0) {
+        cfg_parser->segment_offset[cfg_parser->segment] += dividend - remainder;
     }
 }
 
 void write_segment_memory(void *buf, size_t size) {
-    if(cfg_parser->segment == SEGMENT_TEXT) {
-        if(cfg_parser->segtext_offset + size > cfg_parser->mem_segtext_size) {
-            cfg_parser->mem_segtext_size += 1024;
-            cfg_parser->mem_segtext = realloc(cfg_parser->mem_segtext, cfg_parser->mem_segtext_size);
-            if(cfg_parser->mem_segtext == NULL) {
-                fprintf(stderr, "Segment Text Memory Error: %s\n", strerror(errno));
-                return;
-            }
+    segment_t segment = cfg_parser->segment;
+    offset_t next_offset = cfg_parser->segment_offset[segment] + size;
+    if(next_offset > cfg_parser->seg_memory_size[segment]) {
+        cfg_parser->seg_memory_size[segment] += 1024;
+        cfg_parser->segment_memory[segment] = realloc(cfg_parser->segment_memory[segment], cfg_parser->seg_memory_size[segment]);
+        if(cfg_parser->segment_memory[segment] == NULL) {
+            report_cfg("Failed to allocate memory for segment: %s", strerror(errno));
+            return;
         }
-        memcpy(cfg_parser->mem_segtext + cfg_parser->segtext_offset, buf, size);
-        if(cfg_parser->mem_segtext_len < cfg_parser->segtext_offset + size)
-            cfg_parser->mem_segtext_len = cfg_parser->segtext_offset + size;
     }
-    else if(cfg_parser->segment == SEGMENT_DATA) {
-        if(cfg_parser->segdata_offset + size > cfg_parser->mem_segdata_size) {
-            cfg_parser->mem_segdata_size += 1024;
-            cfg_parser->mem_segdata = realloc(cfg_parser->mem_segdata, cfg_parser->mem_segdata_size);
-            if(cfg_parser->mem_segdata == NULL) {
-                fprintf(stderr, "Segment Data Memory Error: %s\n", strerror(errno));
-                return;
-            }
-        }
-        memcpy(cfg_parser->mem_segdata + cfg_parser->segdata_offset, buf, size);
-        if(cfg_parser->mem_segdata_len < cfg_parser->segdata_offset + size)
-            cfg_parser->mem_segdata_len = cfg_parser->segdata_offset + size;
+    memcpy(cfg_parser->segment_memory[segment] + cfg_parser->segment_offset[segment], buf, size);
+    if(next_offset > cfg_parser->seg_memory_len[segment]) {
+        cfg_parser->seg_memory_len[segment] = next_offset;
     }
 }
 
@@ -205,20 +182,14 @@ void label_cfg() {
                     report_cfg("Multiple definitions of label '%s' on line %ld, col %ld", id, cfg_parser->lineno, cfg_parser->colno);
                 } 
                 else {
-                    if(cfg_parser->segment == SEGMENT_TEXT)
-                        entry->offset = cfg_parser->segtext_offset;
-                    else if(cfg_parser->segment == SEGMENT_DATA)
-                        entry->offset = cfg_parser->segdata_offset;
+                    entry->offset = cfg_parser->segment_offset[cfg_parser->segment];
                     entry->segment = cfg_parser->segment;
                     entry->status = SYMBOL_DEFINED;
                 }
             } 
             else { 
                 entry = insert_symbol_table(symbol_table, id);
-                if(cfg_parser->segment == SEGMENT_TEXT)
-                    entry->offset = cfg_parser->segtext_offset;
-                else if(cfg_parser->segment == SEGMENT_DATA)
-                    entry->offset = cfg_parser->segdata_offset;
+                entry->offset = cfg_parser->segment_offset[cfg_parser->segment];
                 entry->segment = cfg_parser->segment;
                 entry->status = SYMBOL_DEFINED;
             }
@@ -498,7 +469,7 @@ void assemble_opcode_instruction(struct instruction_node *instr) {
                     insert_front(sym_entry->instr_list, (void *)instr);
                 }
                 else {
-                    offset_t branch_offset = (sym_entry->offset - (cfg_parser->segtext_offset + 4)) >> 2;
+                    offset_t branch_offset = (sym_entry->offset - (cfg_parser->segment_offset[cfg_parser->segment] + 4)) >> 2;
                     instruction = CREATE_INSTRUCTION_I(entry->opcode, rs->value.reg, entry->rt, branch_offset);
                     write_segment_memory((void *)&instruction, 0x4);
                 }   
@@ -522,7 +493,7 @@ void assemble_opcode_instruction(struct instruction_node *instr) {
                     insert_front(sym_entry->instr_list, (void *)instr);
                 }
                 else {
-                    offset_t branch_offset = (sym_entry->offset - (cfg_parser->segtext_offset + 4)) >> 2;
+                    offset_t branch_offset = (sym_entry->offset - (cfg_parser->segment_offset[cfg_parser->segment] + 4)) >> 2;
                     instruction = CREATE_INSTRUCTION_I(entry->opcode, rs->value.reg, rt->value.reg, branch_offset);
                     write_segment_memory((void *)&instruction, 0x4);
                 }   
@@ -754,12 +725,7 @@ struct instruction_node *instruction_cfg() {
         case TOK_DIRECTIVE: {
             node = malloc(sizeof(struct instruction_node));
             node->mnemonic = cfg_parser->tokenizer->attrptr;
-            if(cfg_parser->segment == SEGMENT_TEXT) {
-                node->offset = cfg_parser->segtext_offset;
-            }
-            else {
-                node->offset = cfg_parser->segdata_offset;
-            }
+            node->offset = cfg_parser->segment_offset[cfg_parser->segment];
             node->segment = cfg_parser->segment;
             node->next = NULL;
 
@@ -783,7 +749,7 @@ struct instruction_node *instruction_cfg() {
         case TOK_MNEMONIC:
             node = malloc(sizeof(struct instruction_node));
             node->mnemonic = cfg_parser->tokenizer->attrptr;
-            node->offset = cfg_parser->segtext_offset;
+            node->offset = cfg_parser->segment_offset[cfg_parser->segment];
             node->segment = cfg_parser->segment;
             node->next = NULL;
             
@@ -871,15 +837,13 @@ struct program_node *program_cfg(struct parser *parser) {
             struct list_node *instr_ref = sym_entry->instr_list->front;
             while(instr_ref != NULL) {
                 if(((struct instruction_node *)instr_ref->value)->mnemonic->token == TOK_MNEMONIC) {
-                    printf("INSTRUCTION_FOUND\n");
                     parser->segment = ((struct instruction_node *)instr_ref->value)->segment;
-                    parser->segtext_offset = ((struct instruction_node *)instr_ref->value)->offset;
+                    parser->segment_offset[parser->segment] = ((struct instruction_node *)instr_ref->value)->offset;
                     check_instruction(instr_ref->value); 
                 }
                 else if(((struct instruction_node *)instr_ref->value)->mnemonic->token == TOK_DIRECTIVE) {
-                    printf("DIRECTIVE FOUND\n");
                     parser->segment = ((struct instruction_node *)instr_ref->value)->segment;
-                    parser->segdata_offset = ((struct instruction_node *)instr_ref->value)->offset;
+                    parser->segment_offset[parser->segment] = ((struct instruction_node *)instr_ref->value)->offset;
                     check_directive(instr_ref->value); 
                 }
                 instr_ref = instr_ref->next;
@@ -910,16 +874,17 @@ struct parser *create_parser(int file_count, const char **file_arr) {
     parser->status = PARSER_STATUS_NULL;
     parser->lineno = 1;
     parser->colno = 1;
-    parser->segtext_offset = 0x00000000;
-    parser->segdata_offset = 0x00000000;
     parser->ast = NULL;
+
     parser->segment = SEGMENT_TEXT;
-    parser->mem_segtext = NULL;
-    parser->mem_segdata = NULL;
-    parser->mem_segtext_size = 0;
-    parser->mem_segdata_size = 0;
-    parser->mem_segdata_len = 0;
-    parser->mem_segtext_len = 0;
+    parser->segment_offset[SEGMENT_TEXT] = 0;
+    parser->segment_offset[SEGMENT_DATA] = 0;
+    parser->segment_memory[SEGMENT_TEXT] = NULL;
+    parser->segment_memory[SEGMENT_DATA] = NULL;
+    parser->seg_memory_len[SEGMENT_TEXT] = 0;
+    parser->seg_memory_len[SEGMENT_DATA] = 0;
+    parser->seg_memory_size[SEGMENT_TEXT] = 0;
+    parser->seg_memory_size[SEGMENT_DATA] = 0;
     
     return parser;
 }
@@ -961,12 +926,13 @@ pstatus_t execute_parser(struct parser *parser) {
     parser->lookahead = get_next_token(parser->tokenizer);
 
     /* Allocate memory size for segment text (start with a page) */
-    parser->mem_segtext_size = 1024;
-    parser->mem_segtext = malloc(parser->mem_segtext_size);
+    parser->seg_memory_size[SEGMENT_TEXT] = 1024;
+    parser->segment_memory[SEGMENT_TEXT] = malloc(parser->seg_memory_size[SEGMENT_TEXT]);
+    if(parser->segment_memory[SEGMENT_TEXT] == NULL) fprintf(stderr, "FUCK\n");
 
     /* Allocate memory size for segment data (start with a page) */
-    parser->mem_segdata_size = 1024;
-    parser->mem_segdata = malloc(parser->mem_segdata_size);
+    parser->seg_memory_size[SEGMENT_DATA] = 1024;
+    parser->segment_memory[SEGMENT_DATA] = malloc(parser->seg_memory_size[SEGMENT_DATA]);
 
     /* Start grammar recognization... */
     parser->ast = program_cfg(parser);
@@ -978,24 +944,24 @@ pstatus_t execute_parser(struct parser *parser) {
     #ifdef DEBUG
     if(parser->status == PARSER_STATUS_OK) {
         printf("[ BEGIN SEGMENT DATA ]");
-        for(int i = 0; i < parser->mem_segdata_len; i++) {
+        for(int i = 0; i < parser->seg_memory_len[SEGMENT_DATA]; i++) {
             if(i % 4 == 0) {
                 printf("\n");
                 printf("0x%08X  ", i);
             }
-            unsigned char c = *((unsigned char *)parser->mem_segdata + i);
+            unsigned char c = *((unsigned char *)parser->segment_memory[SEGMENT_DATA] + i);
             if(isprint(c)) printf("'%c' ", c);
             else printf("\\%2X ", c);
         
         }
         printf("\n[ END SEGMENT DATA ]\n\n");
         printf("[ BEGIN SEGMENT TEXT ]");
-        for(int i = 0; i < parser->mem_segtext_len; i++) {
+        for(int i = 0; i < parser->seg_memory_len[SEGMENT_TEXT]; i++) {
             if(i % 4 == 0) {
                 printf("\n");
                 printf("0x%08X  ", i);
             }
-            unsigned char c = *((unsigned char *)parser->mem_segtext + i);
+            unsigned char c = *((unsigned char *)parser->segment_memory[SEGMENT_TEXT] + i);
             printf("\\%2X ", c);
         
         }
@@ -1004,8 +970,9 @@ pstatus_t execute_parser(struct parser *parser) {
     #endif
 
     /* Free used data */
-    free(parser->mem_segtext);
-    free(parser->mem_segdata);
+    free(parser->segment_memory[SEGMENT_TEXT]);
+    free(parser->segment_memory[SEGMENT_DATA]);
+
     delete_linked_list(&(parser->tokenizer_queue), LN_VSTATIC);
 
     return parser->status;
