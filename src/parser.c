@@ -241,6 +241,7 @@ struct operand_node *operand_cfg() {
             
             node = malloc(sizeof(struct operand_node));
             node->operand = OPERAND_REGISTER;
+            node->identifier = NULL;
             node->value.reg = value;
             node->next = NULL;
             
@@ -274,6 +275,7 @@ struct operand_node *operand_cfg() {
             
             node = malloc(sizeof(struct operand_node));
             node->operand = OPERAND_IMMEDIATE;
+            node->identifier = NULL;
             node->value.integer = value;
             node->next = NULL;
             
@@ -485,10 +487,12 @@ void assemble_psuedo_instruction(struct instruction_node *instr) {
             if(sym_entry == NULL) {
                 insert_front(cfg_parser->ref_symlist, insert_symbol_table(symbol_table, label->identifier));
                 insert_front(sym_entry->instr_list, (void *)instr);
+                inc_segment_offset(0x8);
             }
             else {
                 if(sym_entry->status == SYMBOL_UNDEFINED) {
                     insert_front(sym_entry->instr_list, (void *)instr);
+                    inc_segment_offset(0x8);
                 }
                 else {
                     instruction = CREATE_INSTRUCTION_R(0, rs->value.reg, rt->value.reg, 1, 0, 0x2A);
@@ -511,10 +515,12 @@ void assemble_psuedo_instruction(struct instruction_node *instr) {
             if(sym_entry == NULL) {
                 insert_front(cfg_parser->ref_symlist, insert_symbol_table(symbol_table, label->identifier));
                 insert_front(sym_entry->instr_list, (void *)instr);
+                inc_segment_offset(0x8);
             }
             else {
                 if(sym_entry->status == SYMBOL_UNDEFINED) {
                     insert_front(sym_entry->instr_list, (void *)instr);
+                    inc_segment_offset(0x8);
                 }
                 else {
                     instruction = CREATE_INSTRUCTION_R(0, rt->value.reg, rs->value.reg, 1, 0, 0x2A);
@@ -558,10 +564,12 @@ void assemble_psuedo_instruction(struct instruction_node *instr) {
             if(sym_entry == NULL) {
                 insert_front(cfg_parser->ref_symlist, insert_symbol_table(symbol_table, label->identifier));
                 insert_front(sym_entry->instr_list, (void *)instr);
+                inc_segment_offset(0x8);
             }
             else {
                 if(sym_entry->status == SYMBOL_UNDEFINED) {
                     insert_front(sym_entry->instr_list, (void *)instr);
+                    inc_segment_offset(0x8);
                 }
                 else {
                     instruction = CREATE_INSTRUCTION_R(0, rs->value.reg, rt->value.reg, 1, 0, 0x2A);
@@ -584,10 +592,12 @@ void assemble_psuedo_instruction(struct instruction_node *instr) {
             if(sym_entry == NULL) {
                 insert_front(cfg_parser->ref_symlist, insert_symbol_table(symbol_table, label->identifier));
                 insert_front(sym_entry->instr_list, (void *)instr);
+                inc_segment_offset(0x8);
             }
             else {
                 if(sym_entry->status == SYMBOL_UNDEFINED) {
                     insert_front(sym_entry->instr_list, (void *)instr);
+                    inc_segment_offset(0x8);
                 }
                 else {
                     instruction = CREATE_INSTRUCTION_R(0, rt->value.reg, rs->value.reg, 1, 0, 0x2A);
@@ -1188,7 +1198,7 @@ pstatus_t execute_parser(struct parser *parser) {
             for(int i = 0; i < parser->seg_memory_len[segment]; ++i) {
                 if((i & (0x3)) == 0) printf("\n0x%08X  ", segment_offset_base[segment] + i);
                 unsigned char c = *((unsigned char *)parser->segment_memory[segment] + i);
-                printf("\\%2X ", c);
+                printf("\\%02X ", c);
             }
             printf("\n\n");
         }
