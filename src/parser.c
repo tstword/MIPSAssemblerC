@@ -396,7 +396,7 @@ int verify_operand_list(struct reserved_entry *res_entry, struct operand_node *o
     return 1;
 }
 
-void assemble_psuedo_instruction(struct instruction_node *instr) {
+int assemble_psuedo_instruction(struct instruction_node *instr) {
     instruction_t instruction = 0;
 
     struct opcode_entry *entry = instr->mnemonic->attrptr;
@@ -433,11 +433,13 @@ void assemble_psuedo_instruction(struct instruction_node *instr) {
                 insert_front(cfg_parser->ref_symlist, insert_symbol_table(symbol_table, label->identifier));
                 insert_front(sym_entry->instr_list, (void *)instr);
                 inc_segment_offset(0x8);
+                return 0;
             }
             else {
                 if(sym_entry->status == SYMBOL_UNDEFINED) {
                     insert_front(sym_entry->instr_list, (void *)instr);
                     inc_segment_offset(0x8);
+                    return 0;
                 }
                 else {
                     instruction = CREATE_INSTRUCTION_I(0x0F, 0, rd->value.reg, (sym_entry->offset >> 16));
@@ -465,10 +467,12 @@ void assemble_psuedo_instruction(struct instruction_node *instr) {
             if(sym_entry == NULL) {
                 insert_front(cfg_parser->ref_symlist, insert_symbol_table(symbol_table, label->identifier));
                 insert_front(sym_entry->instr_list, (void *)instr);
+                return 0;
             }
             else {
                 if(sym_entry->status == SYMBOL_UNDEFINED) {
                     insert_front(sym_entry->instr_list, (void *)instr);
+                    return 0;
                 }
                 else {
                     offset_t branch_offset = (sym_entry->offset - (cfg_parser->segment_offset[cfg_parser->segment] + 4)) >> 2;
@@ -488,11 +492,13 @@ void assemble_psuedo_instruction(struct instruction_node *instr) {
                 insert_front(cfg_parser->ref_symlist, insert_symbol_table(symbol_table, label->identifier));
                 insert_front(sym_entry->instr_list, (void *)instr);
                 inc_segment_offset(0x8);
+                return 0;
             }
             else {
                 if(sym_entry->status == SYMBOL_UNDEFINED) {
                     insert_front(sym_entry->instr_list, (void *)instr);
                     inc_segment_offset(0x8);
+                    return 0;
                 }
                 else {
                     instruction = CREATE_INSTRUCTION_R(0, rs->value.reg, rt->value.reg, 1, 0, 0x2A);
@@ -516,11 +522,13 @@ void assemble_psuedo_instruction(struct instruction_node *instr) {
                 insert_front(cfg_parser->ref_symlist, insert_symbol_table(symbol_table, label->identifier));
                 insert_front(sym_entry->instr_list, (void *)instr);
                 inc_segment_offset(0x8);
+                return 0;
             }
             else {
                 if(sym_entry->status == SYMBOL_UNDEFINED) {
                     insert_front(sym_entry->instr_list, (void *)instr);
                     inc_segment_offset(0x8);
+                    return 0;
                 }
                 else {
                     instruction = CREATE_INSTRUCTION_R(0, rt->value.reg, rs->value.reg, 1, 0, 0x2A);
@@ -542,10 +550,12 @@ void assemble_psuedo_instruction(struct instruction_node *instr) {
             if(sym_entry == NULL) {
                 insert_front(cfg_parser->ref_symlist, insert_symbol_table(symbol_table, label->identifier));
                 insert_front(sym_entry->instr_list, (void *)instr);
+                return 0;
             }
             else {
                 if(sym_entry->status == SYMBOL_UNDEFINED) {
                     insert_front(sym_entry->instr_list, (void *)instr);
+                    return 0;
                 }
                 else {
                     offset_t branch_offset = (sym_entry->offset - (cfg_parser->segment_offset[cfg_parser->segment] + 4)) >> 2;
@@ -565,11 +575,13 @@ void assemble_psuedo_instruction(struct instruction_node *instr) {
                 insert_front(cfg_parser->ref_symlist, insert_symbol_table(symbol_table, label->identifier));
                 insert_front(sym_entry->instr_list, (void *)instr);
                 inc_segment_offset(0x8);
+                return 0;
             }
             else {
                 if(sym_entry->status == SYMBOL_UNDEFINED) {
                     insert_front(sym_entry->instr_list, (void *)instr);
                     inc_segment_offset(0x8);
+                    return 0;
                 }
                 else {
                     instruction = CREATE_INSTRUCTION_R(0, rs->value.reg, rt->value.reg, 1, 0, 0x2A);
@@ -593,11 +605,13 @@ void assemble_psuedo_instruction(struct instruction_node *instr) {
                 insert_front(cfg_parser->ref_symlist, insert_symbol_table(symbol_table, label->identifier));
                 insert_front(sym_entry->instr_list, (void *)instr);
                 inc_segment_offset(0x8);
+                return 0;
             }
             else {
                 if(sym_entry->status == SYMBOL_UNDEFINED) {
                     insert_front(sym_entry->instr_list, (void *)instr);
                     inc_segment_offset(0x8);
+                    return 0;
                 }
                 else {
                     instruction = CREATE_INSTRUCTION_R(0, rt->value.reg, rs->value.reg, 1, 0, 0x2A);
@@ -612,9 +626,11 @@ void assemble_psuedo_instruction(struct instruction_node *instr) {
             break;
         }
     }
+
+    return 1;
 }
 
-void assemble_funct_instruction(struct instruction_node *instr) {
+int assemble_funct_instruction(struct instruction_node *instr) {
     instruction_t instruction = 0;
 
     struct opcode_entry *entry = instr->mnemonic->attrptr;
@@ -680,9 +696,11 @@ void assemble_funct_instruction(struct instruction_node *instr) {
             break;
         }
     }
+
+    return 1;
 }
 
-void assemble_opcode_instruction(struct instruction_node *instr) {
+int assemble_opcode_instruction(struct instruction_node *instr) {
     instruction_t instruction = 0;
 
     struct opcode_entry *entry = instr->mnemonic->attrptr;
@@ -713,10 +731,12 @@ void assemble_opcode_instruction(struct instruction_node *instr) {
             if(sym_entry == NULL) {
                 insert_front(cfg_parser->ref_symlist, insert_symbol_table(symbol_table, label->identifier));
                 insert_front(sym_entry->instr_list, (void *)instr);
+                return 0;
             }
             else {
                 if(sym_entry->status == SYMBOL_UNDEFINED) {
                     insert_front(sym_entry->instr_list, (void *)instr);
+                    return 0;
                 }
                 else {
                     offset_t branch_offset = (sym_entry->offset - (cfg_parser->segment_offset[cfg_parser->segment] + 4)) >> 2;
@@ -737,10 +757,12 @@ void assemble_opcode_instruction(struct instruction_node *instr) {
             if(sym_entry == NULL) {
                 insert_front(cfg_parser->ref_symlist, insert_symbol_table(symbol_table, label->identifier));
                 insert_front(sym_entry->instr_list, (void *)instr);
+                return 0;
             }
             else {
                 if(sym_entry->status == SYMBOL_UNDEFINED) {
                     insert_front(sym_entry->instr_list, (void *)instr);
+                    return 0;
                 }
                 else {
                     offset_t branch_offset = (sym_entry->offset - (cfg_parser->segment_offset[cfg_parser->segment] + 4)) >> 2;
@@ -759,10 +781,12 @@ void assemble_opcode_instruction(struct instruction_node *instr) {
             if(sym_entry == NULL) {
                 insert_front(cfg_parser->ref_symlist, insert_symbol_table(symbol_table, label->identifier));
                 insert_front(sym_entry->instr_list, (void *)instr);
+                return 0;
             }
             else {
                 if(sym_entry->status == SYMBOL_UNDEFINED) {
                     insert_front(sym_entry->instr_list, (void *)instr);
+                    return 0;
                 }
                 else {
                     instruction = CREATE_INSTRUCTION_J(entry->opcode, (sym_entry->offset >> 2));
@@ -788,6 +812,20 @@ void assemble_opcode_instruction(struct instruction_node *instr) {
             break;
         }
     }
+
+    return 1;
+}
+
+void destroy_instruction(struct instruction_node *instr) {
+    /* Free operands */
+    struct operand_node *op_node = instr->operand_list;
+    while(op_node != NULL) {
+        struct operand_node *next_op = op_node->next;
+        if(op_node->operand == OPERAND_LABEL || op_node->operand == OPERAND_STRING) free(op_node->identifier);
+        free(op_node);
+        op_node = next_op;
+    }
+    free(instr);
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -800,7 +838,10 @@ void assemble_opcode_instruction(struct instruction_node *instr) {
 void check_instruction(struct instruction_node *instr) {
     if(instr == NULL || instr->mnemonic == NULL) return;
 
-    if(!verify_operand_list(instr->mnemonic, instr->operand_list)) return;
+    if(!verify_operand_list(instr->mnemonic, instr->operand_list)) {
+        destroy_instruction(instr);
+        return;
+    }
 
     /* TO-DO: Assemble (?) instruction */
     if(cfg_parser->segment == SEGMENT_DATA) {
@@ -809,26 +850,26 @@ void check_instruction(struct instruction_node *instr) {
         return;
     }
 
+    int instr_size = ((struct opcode_entry *)instr->mnemonic->attrptr)->type == OPTYPE_PSUEDO ? ((struct opcode_entry *)instr->mnemonic->attrptr)->size : 0x4;
     struct opcode_entry *entry = instr->mnemonic->attrptr;
 
     if(entry->type == OPTYPE_PSUEDO) {
-        assemble_psuedo_instruction(instr);
+        if(assemble_psuedo_instruction(instr)) 
+            destroy_instruction(instr);
     }
     else {
         if(entry->opcode == 0x00) {
-            assemble_funct_instruction(instr);       
+            if(assemble_funct_instruction(instr)) 
+                destroy_instruction(instr);       
         }
         else {
-            assemble_opcode_instruction(instr);
+            if(assemble_opcode_instruction(instr)) 
+                destroy_instruction(instr);
         }
     }
 
     /* Finally increment LC */
-    if(((struct opcode_entry *)instr->mnemonic->attrptr)->type == OPTYPE_PSUEDO) {
-		inc_segment_offset(((struct opcode_entry *)instr->mnemonic->attrptr)->size);
-	} else {
-		inc_segment_offset(0x4);
-	}
+    inc_segment_offset(instr_size);
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -848,7 +889,10 @@ void check_directive(struct instruction_node *instr) {
 
     struct opcode_entry *entry = (struct opcode_entry *)directive->attrptr;
 
-    if(!verify_operand_list(directive, operand_list)) return;
+    if(!verify_operand_list(directive, operand_list)) {
+        destroy_instruction(instr);
+        return;
+    }
 
     /* Check if segment is text before handling directive */
     switch(entry->opcode) {
@@ -1045,33 +1089,27 @@ struct instruction_node *instruction_cfg() {
  * results in reporting the error to report_cfg
  * @return Address of the first instruction_node in the instruction list, otherwise NULL
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-struct instruction_node *instruction_list_cfg() {
-    struct instruction_node *node = NULL;
+void instruction_list_cfg() {  
+    while(1) {  
+        while(cfg_parser->lookahead == TOK_NULL) {
+            /* Free current tokenizer */
+            destroy_tokenizer(&cfg_parser->tokenizer);
+            remove_front(cfg_parser->tokenizer_queue, LN_VSTATIC);
+
+            /* No more files to process */
+            if(cfg_parser->tokenizer_queue->front == NULL) return;  
+            
+            /* Setup tokenizer */
+            cfg_parser->tokenizer = cfg_parser->tokenizer_queue->front->value;
+
+            /* Setup lookahead */
+            cfg_parser->lookahead = get_next_token(cfg_parser->tokenizer);
+        }
     
-    while(cfg_parser->lookahead == TOK_NULL) {
-        /* Free current tokenizer */
-        destroy_tokenizer(&cfg_parser->tokenizer);
-        remove_front(cfg_parser->tokenizer_queue, LN_VSTATIC);
-
-        /* No more files to process */
-        if(cfg_parser->tokenizer_queue->front == NULL) return node;    
-        
-        /* Setup tokenizer */
-        cfg_parser->tokenizer = cfg_parser->tokenizer_queue->front->value;
-
-        /* Setup lookahead */
-        cfg_parser->lookahead = get_next_token(cfg_parser->tokenizer);
+        if(cfg_parser->lookahead != TOK_NULL) {
+            instruction_cfg();
+        }
     }
-    
-    if(cfg_parser->lookahead != TOK_NULL) {
-        node = instruction_cfg();
-        if(node != NULL)
-            node->next = instruction_list_cfg();
-        else
-            node = instruction_list_cfg();
-    }
-
-    return node;
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -1079,10 +1117,10 @@ struct instruction_node *instruction_list_cfg() {
  * Purpose: Start symbol the the LL(1) context-free grammer
  * @return Address of the allocated program_node
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-struct program_node *program_cfg(struct parser *parser) {
+void program_cfg(struct parser *parser) {
     cfg_parser = parser;
-    struct program_node *node = malloc(sizeof(struct program_node));
-    node->instruction_list = instruction_list_cfg();
+
+    instruction_list_cfg();
     
     /* Verify undefined symbol table */
     for(struct list_node *head = parser->ref_symlist->front; head != NULL; head = head->next) {
@@ -1099,6 +1137,7 @@ struct program_node *program_cfg(struct parser *parser) {
                     parser->segment = ((struct instruction_node *)instr_ref->value)->segment;
                     parser->segment_offset[parser->segment] = ((struct instruction_node *)instr_ref->value)->offset;
                     check_instruction(instr_ref->value); 
+                    destroy_instruction(instr_ref->value);
                 }
                 else if(((struct instruction_node *)instr_ref->value)->mnemonic->token == TOK_DIRECTIVE) {
                     parser->segment = ((struct instruction_node *)instr_ref->value)->segment;
@@ -1109,7 +1148,6 @@ struct program_node *program_cfg(struct parser *parser) {
             }
         }
     }
-    return node;
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -1184,7 +1222,7 @@ pstatus_t execute_parser(struct parser *parser) {
     parser->lookahead = get_next_token(parser->tokenizer);
 
     /* Start grammar recognization... */
-    parser->ast = program_cfg(parser);
+    program_cfg(parser);
 
     if(parser->status == PARSER_STATUS_NULL) {
         parser->status = PARSER_STATUS_OK;
@@ -1222,22 +1260,22 @@ pstatus_t execute_parser(struct parser *parser) {
  * @param parser -> Reference to the address of the parser structure
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 void destroy_parser(struct parser **parser) {
-    /* Destory AST */
-    struct instruction_node *instr_node = (*parser)->ast ? (*parser)->ast->instruction_list : NULL;
-    /* Free instructions */
-    while(instr_node != NULL) {
-        struct instruction_node *next_instr = instr_node->next;
-        /* Free operands */
-        struct operand_node *op_node = instr_node->operand_list;
-        while(op_node != NULL) {
-            struct operand_node *next_op = op_node->next;
-            if(op_node->operand == OPERAND_LABEL || op_node->operand == OPERAND_STRING) free(op_node->identifier);
-            free(op_node);
-            op_node = next_op;
-        }
-        free(instr_node);
-        instr_node = next_instr;
-    }
+    // /* Destory AST */
+    // struct instruction_node *instr_node = (*parser)->ast ? (*parser)->ast->instruction_list : NULL;
+    // /* Free instructions */
+    // while(instr_node != NULL) {
+    //     struct instruction_node *next_instr = instr_node->next;
+    //     /* Free operands */
+    //     struct operand_node *op_node = instr_node->operand_list;
+    //     while(op_node != NULL) {
+    //         struct operand_node *next_op = op_node->next;
+    //         if(op_node->operand == OPERAND_LABEL || op_node->operand == OPERAND_STRING) free(op_node->identifier);
+    //         free(op_node);
+    //         op_node = next_op;
+    //     }
+    //     free(instr_node);
+    //     instr_node = next_instr;
+    // }
 
     /* Free AST */
     free((*parser)->ast);
