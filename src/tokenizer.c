@@ -106,6 +106,8 @@ struct reserved_entry reserved_table[] = {
     { ".data"   , TOK_DIRECTIVE, opcode_table + DIRECTIVE_DATA    },
     { ".half"   , TOK_DIRECTIVE, opcode_table + DIRECTIVE_HALF    },
     { ".include", TOK_DIRECTIVE, opcode_table + DIRECTIVE_INCLUDE },
+    { ".kdata"  , TOK_DIRECTIVE, opcode_table + DIRECTIVE_KDATA   },
+    { ".ktext"  , TOK_DIRECTIVE, opcode_table + DIRECTIVE_KTEXT   },
     { ".text"   , TOK_DIRECTIVE, opcode_table + DIRECTIVE_TEXT    },
     { ".word"   , TOK_DIRECTIVE, opcode_table + DIRECTIVE_WORD    },
     { "add"     , TOK_MNEMONIC, opcode_table + MNEMONIC_ADD     },

@@ -28,9 +28,10 @@
 /* Marco definitions... */
 #define SEGMENT_TEXT        0x0
 #define SEGMENT_DATA        0x1
+#define SEGMENT_KTEXT       0x2
+#define SEGMENT_KDATA       0x3
 
-/* The total number of segments */
-#define MAX_SEGMENTS        0x2
+#define MAX_SEGMENTS        0x4
 
 #define OFFSET_BYTE         0x1
 #define OFFSET_HALFWORD     0x2
@@ -45,6 +46,8 @@ typedef int32_t  offset_t;
 typedef uint32_t segment_t;
 typedef uint16_t datasize_t;
 typedef uint8_t  symstat_t; 
+
+extern const char *segment_string[MAX_SEGMENTS];
 
 struct symbol_table_entry {
     char *key;                              /* Identifier for label */

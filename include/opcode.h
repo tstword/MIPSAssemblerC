@@ -102,6 +102,8 @@
 #define DIRECTIVE_ALIGN    0x3F
 #define DIRECTIVE_HALF     0x40
 #define DIRECTIVE_WORD     0x41
+#define DIRECTIVE_KTEXT    0x42
+#define DIRECTIVE_KDATA    0x43
 
 /* Opcode type flags */
 #define OPTYPE_DEFAULT    0x0

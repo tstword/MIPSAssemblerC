@@ -26,6 +26,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* Segment string array */
+const char *segment_string[MAX_SEGMENTS] = { 
+    [SEGMENT_TEXT]  = "TEXT" , [SEGMENT_DATA]  = "DATA" ,
+    [SEGMENT_KTEXT] = "KTEXT", [SEGMENT_KDATA] = "KDATA",
+};
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Function: djb2hash
  * Purpose: Computes a hash value from the string
@@ -200,13 +206,12 @@ void destroy_symbol_table(struct symbol_table **symtabp) {
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 void print_symbol_table(struct symbol_table *symtab) {
     const char *symtab_status_str[3] = { "UNDEFINED", "DEFINED", "DOUBLY" };
-     const char *segment_str[2] = { "TEXT", "DATA" };
 
-    printf("===== Symbol Table =====\n");
+    printf("[ ***** Symbol Table ***** ]\n");
 
     for(size_t i = 0; i < symtab->bucket_size; ++i) {
         for(struct symbol_table_entry *head = symtab->buckets[i]; head != NULL; head = head->next) {
-            printf("[ %-20s | 0x%08X | %4s | 0x%02X | %-8s ]---> ", head->key, head->offset, segment_str[head->segment], 
+            printf("[ %-20s | 0x%08X | %-5s | 0x%02X | %-8s ]---> ", head->key, head->offset, segment_string[head->segment], 
                     head->datasize, symtab_status_str[head->status]);
             
             if(head->next == NULL) printf("\n");
