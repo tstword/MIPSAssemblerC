@@ -307,31 +307,39 @@ struct operand_node *operand_cfg() {
  * @return Address of the first operand_node in the operand list, otherwise NULL
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 struct operand_node *operand_list_cfg() {
-    struct operand_node *node = NULL;
+    struct operand_node *root = NULL;
+    struct operand_node *current_operand = NULL;
 
-    switch(cfg_parser->lookahead) {
-        case TOK_REGISTER:
-        case TOK_IDENTIFIER:
-        case TOK_INTEGER:
-        case TOK_STRING:
-            node = operand_cfg();
-            if(cfg_parser->lookahead == TOK_COMMA) {
-                match_cfg(TOK_COMMA);
-                if(node != NULL)
-                    node->next = operand_list_cfg();
-                else
-                    node = operand_list_cfg();
-            }
-            break;
-		case TOK_EOL:
-		case TOK_NULL:
-			report_cfg("Expected operand after line %ld, col %ld", cfg_parser->lineno, cfg_parser->colno);
-			break;
-        default:
-            report_cfg("Invalid operand '%s' on line %ld, col %ld", cfg_parser->tokenizer->lexbuf, cfg_parser->lineno, cfg_parser->colno);
+    while(1) {
+        switch(cfg_parser->lookahead) {
+            case TOK_REGISTER:
+            case TOK_IDENTIFIER:
+            case TOK_INTEGER:
+            case TOK_STRING:
+                if(current_operand == NULL) {
+                    current_operand = operand_cfg();
+                    if(root == NULL) root = current_operand;
+                }
+                else {
+                    current_operand->next = operand_cfg();
+                    current_operand = current_operand->next;
+                }
+                if(cfg_parser->lookahead == TOK_COMMA) {
+                    match_cfg(TOK_COMMA);
+                    continue;
+                }
+                return root;
+            case TOK_EOL:
+            case TOK_NULL:
+                report_cfg("Expected operand after line %ld, col %ld", cfg_parser->lineno, cfg_parser->colno);
+                return root;
+            default:
+                report_cfg("Invalid operand '%s' on line %ld, col %ld", cfg_parser->tokenizer->lexbuf, cfg_parser->lineno, cfg_parser->colno);
+                return root;
+        }
     }
 
-    return node;
+    return root;
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
