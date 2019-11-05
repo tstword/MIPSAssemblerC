@@ -33,9 +33,15 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
  /* * * * * * * * * * * * * * * * *
-  * TO-DO: The different segment offsets and memory locations make the code confusing to read. Instead
-  * have #define SEGMENT_TEXT 0x0 and #define SEGMENT_DATA 0x1 and make arrays for the offset, memory
-  * location and sizes 
+  * TO-DO: Right now segments are stored into buffers allocated by the heap. While this isn't an issue for small
+  * programs, it can be an issue for larger programs. To support efficiency in memory management unit in the 
+  * simulator, the assembler should write the bytes into a file. This will allow us to store the data and text
+  * on the hard drive and load in (the page if using VM) of the required section saving on memory space. 
+  *
+  * Motivation (?): Why load in the entire segments into memory if they aren't being used. Just as a 20GB game would
+  * load resources as they are required since all of it cannot fit into RAM, we should only load in the segments as 
+  * they are requested by either PC, jump instructions, or load / store instructions.
+  *
   * * * * * * * * * * * * * * * * */
 
 #include "parser.h"
