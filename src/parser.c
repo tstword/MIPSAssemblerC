@@ -1230,7 +1230,7 @@ pstatus_t execute_parser(struct parser *parser) {
     }
 
     /* Setup tokenizer */
-    parser->tokenizer = parser->tokenizer_queue->front->value;
+    parser->tokenizer = parser->tokenizer_list->front->value;
 
     /* Setup lookahead */
     parser->lookahead = get_next_token(parser->tokenizer);

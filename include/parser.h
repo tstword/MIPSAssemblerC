@@ -44,12 +44,13 @@
 #include "linkedlist.h"
 
 /* Marco definition */
-#define PARSER_STATUS_NULL 0x0
-#define PARSER_STATUS_OK   0x1
-#define PARSER_STATUS_FAIL 0x2
+#define ASSEMBLER_STATUS_NULL     0x0
+#define ASSEMBLER_STATUS_OK       0x1
+#define ASSEMBLER_STATUS_FAIL     0x2
+#define ASSEBMLER_STATUS_CRITICAL 0x3
 
 typedef unsigned char operand_t;
-typedef unsigned char pstatus_t;
+typedef unsigned char astatus_t;
 
 /* Abstract syntax tree */
 struct mnemonic_node {
@@ -96,7 +97,7 @@ struct parser {
     segment_t              segment;                         /* Indication of current segment */
 
     token_t                lookahead;                       /* Required for LL(1) grammar */
-    pstatus_t              status;                          /* Indicates the status of the parser */
+    astatus_t              status;                          /* Indicates the status of the parser */
     
     offset_t               segment_offset[MAX_SEGMENTS];    /* Offset used for segment */
     size_t                 seg_memory_len[MAX_SEGMENTS];    /* Length of memory for segment */
@@ -106,9 +107,31 @@ struct parser {
     size_t                 colno;                           /* Column number of where the tokenizer last left off */
 };
 
+struct assembler {
+    struct tokenizer        *tokenizer;
+    struct linked_list      *tokenizer_list;
+
+    struct symbol_table     *symbol_table;
+    struct linked_list      *decl_symlist;
+
+    void                    *segment_memory[MAX_SEGMENTS];
+
+    token_t                 lookahead;
+    astatus_t               status;
+    segment_t               segment;
+
+    offset_t                segment_offset[MAX_SEGMENTS];
+
+    size_t                  segment_memory_len[MAX_SEGMENTS];
+    size_t                  segment_memory_size[MAX_SEGMENTS];
+
+    size_t                  lineno;
+    size_t                  colno;
+}
+
 /* Function prototypes */
-struct parser *create_parser(int, const char **);
-pstatus_t execute_parser(struct parser *);
-void destroy_parser(struct parser **);
+struct assembler *create_assembler(int, const char **);
+astatus_t execute_assembler(struct assembler *);
+void destroy_assembler(struct assembler **);
 
 #endif
