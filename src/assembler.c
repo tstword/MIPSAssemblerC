@@ -295,6 +295,18 @@ struct operand_node *operand_cfg() {
             }
             break;
         }
+        case TOK_LPAREN: {
+            match_cfg(TOK_LPAREN);
+            int reg_value = cfg_assembler->tokenizer->attrval;
+            if(match_cfg(TOK_REGISTER) && match_cfg(TOK_RPAREN)) {
+                node = malloc(sizeof(struct operand_node));
+                node->operand = OPERAND_ADDRESS;
+                node->value.reg = reg_value;
+                node->value.integer = 0;
+                node->next = NULL;
+            }
+            break;
+        }
         case TOK_EOL:
         case TOK_NULL:
             report_cfg("Expected operand after line %ld, col %ld", cfg_assembler->lineno, cfg_assembler->colno);
@@ -322,6 +334,7 @@ struct operand_node *operand_list_cfg() {
             case TOK_IDENTIFIER:
             case TOK_INTEGER:
             case TOK_STRING:
+            case TOK_LPAREN:
                 if(current_operand == NULL) {
                     current_operand = operand_cfg();
                     if(root == NULL) root = current_operand;
@@ -334,6 +347,9 @@ struct operand_node *operand_list_cfg() {
                     match_cfg(TOK_COMMA);
                     continue;
                 }
+                else if (cfg_assembler->lookahead == TOK_REGISTER || cfg_assembler->lookahead == TOK_IDENTIFIER 
+                            || cfg_assembler->lookahead == TOK_STRING || cfg_assembler->lookahead == TOK_LPAREN
+                            || cfg_assembler->lookahead == TOK_INTEGER) continue;
                 return root;
             case TOK_EOL:
             case TOK_NULL:
