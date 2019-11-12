@@ -4,7 +4,7 @@
 #include <errno.h>
 
 #include "tokenizer.h"
-#include "parser.h"
+#include "assembler.h"
 #include "symtable.h"
 #include "opcode.h"
 
@@ -65,29 +65,16 @@ void printToken(token_t token, struct tokenizer *tokenizer) {
 }
 
 int main(int argc, char *argv[]) {
-    
     if(argc == 1) {
         /* Print usage and terminate */
         fprintf(stderr, "Usage: %s [source]\n", argv[0]);
         return -1;
     }
 
-    symbol_table = create_symbol_table();
-
-    struct parser *parser = create_parser(argc - 1, (const char **)(argv + 1));
-
-    if(execute_parser(parser) == PARSER_STATUS_FAIL) {
+    struct assembler *assembler = create_assembler();
+    if(execute_assembler(assembler, (const char **)(argv + 1), argc - 1) == ASSEMBLER_STATUS_FAIL) 
         fprintf(stderr, "\nFailed to assemble program\n");
-    }
-
-    /* Destory parser */
-    destroy_parser(&parser);
-
-    #ifdef DEBUG
-    print_symbol_table(symbol_table);
-    #endif
-
-    destroy_symbol_table(&symbol_table);
+    destroy_assembler(&assembler);
 
     return 0;
 }

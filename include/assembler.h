@@ -47,7 +47,7 @@
 #define ASSEMBLER_STATUS_NULL     0x0
 #define ASSEMBLER_STATUS_OK       0x1
 #define ASSEMBLER_STATUS_FAIL     0x2
-#define ASSEBMLER_STATUS_CRITICAL 0x3
+#define ASSEBMLER_STATUS_CRIT     0x3
 
 typedef unsigned char operand_t;
 typedef unsigned char astatus_t;
@@ -82,30 +82,30 @@ struct program_node {
     struct instruction_node *instruction_list;
 };
 
-/* Parser structure definition */
-struct parser {
-    struct tokenizer       *tokenizer;                      /* Address of current tokenizer */
-    struct linked_list     *tokenizer_queue;                /* Queue of tokenizers */
+// /* Parser structure definition */
+// struct parser {
+//     struct tokenizer       *tokenizer;                      /* Address of current tokenizer */
+//     struct linked_list     *tokenizer_queue;                /* Queue of tokenizers */
     
-    struct program_node    *ast;                            /* Root of the abstract syntax tree */
+//     struct program_node    *ast;                            /* Root of the abstract syntax tree */
     
-    struct linked_list     *ref_symlist;                    /* List of symbols that were referenced before definition */
-    struct linked_list     *src_files;                      /* List of source file strings */
+//     struct linked_list     *ref_symlist;                    /* List of symbols that were referenced before definition */
+//     struct linked_list     *src_files;                      /* List of source file strings */
     
-    unsigned char          *segment_memory[MAX_SEGMENTS];   /* Memory set aside for segment */
+//     unsigned char          *segment_memory[MAX_SEGMENTS];   /* Memory set aside for segment */
     
-    segment_t              segment;                         /* Indication of current segment */
+//     segment_t              segment;                         /* Indication of current segment */
 
-    token_t                lookahead;                       /* Required for LL(1) grammar */
-    astatus_t              status;                          /* Indicates the status of the parser */
+//     token_t                lookahead;                       /* Required for LL(1) grammar */
+//     astatus_t              status;                          /* Indicates the status of the parser */
     
-    offset_t               segment_offset[MAX_SEGMENTS];    /* Offset used for segment */
-    size_t                 seg_memory_len[MAX_SEGMENTS];    /* Length of memory for segment */
-    size_t                 seg_memory_size[MAX_SEGMENTS];   /* Size of memory for segment */
+//     offset_t               segment_offset[MAX_SEGMENTS];    /* Offset used for segment */
+//     size_t                 seg_memory_len[MAX_SEGMENTS];    /* Length of memory for segment */
+//     size_t                 seg_memory_size[MAX_SEGMENTS];   /* Size of memory for segment */
     
-    size_t                 lineno;                          /* Line number of where the tokenizer last left off */
-    size_t                 colno;                           /* Column number of where the tokenizer last left off */
-};
+//     size_t                 lineno;                          /* Line number of where the tokenizer last left off */
+//     size_t                 colno;                           /* Column number of where the tokenizer last left off */
+// };
 
 struct assembler {
     struct tokenizer        *tokenizer;
@@ -122,16 +122,16 @@ struct assembler {
 
     offset_t                segment_offset[MAX_SEGMENTS];
 
-    size_t                  segment_memory_len[MAX_SEGMENTS];
+    size_t                  segment_memory_offset[MAX_SEGMENTS];
     size_t                  segment_memory_size[MAX_SEGMENTS];
 
     size_t                  lineno;
     size_t                  colno;
-}
+};
 
 /* Function prototypes */
-struct assembler *create_assembler(int, const char **);
-astatus_t execute_assembler(struct assembler *);
+struct assembler *create_assembler();
+astatus_t execute_assembler(struct assembler *, const char **, size_t);
 void destroy_assembler(struct assembler **);
 
 #endif
