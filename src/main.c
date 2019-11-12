@@ -72,9 +72,13 @@ int main(int argc, char *argv[]) {
     }
 
     struct assembler *assembler = create_assembler();
-    if(execute_assembler(assembler, (const char **)(argv + 1), argc - 1) == ASSEMBLER_STATUS_FAIL) 
-        fprintf(stderr, "\nFailed to assemble program\n");
+    astatus_t status = execute_assembler(assembler, (const char **)(argv + 1), argc - 1);
     destroy_assembler(&assembler);
+
+    if(status == ASSEMBLER_STATUS_FAIL) {
+        fprintf(stderr, "\nFailed to assemble program\n");
+        return -1;
+    }
 
     return 0;
 }
