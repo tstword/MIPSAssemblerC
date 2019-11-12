@@ -504,7 +504,7 @@ int assemble_psuedo_instruction(struct instruction_node *instr) {
         case 0x03: {
             struct operand_node *rd = instr->operand_list;
             struct operand_node *rs = instr->operand_list->next;
-            instruction[0] = CREATE_INSTRUCTION_R(0, rs->value.reg, rs->value.reg, rd->value.reg, 0, 0x27);
+            instruction[0] = CREATE_INSTRUCTION_R(0, rs->value.reg, 0, rd->value.reg, 0, 0x27);
             break; 
         }
         case 0x04: {
@@ -695,8 +695,8 @@ int assemble_opcode_instruction(struct instruction_node *instr) {
         case 0x0A:
         case 0x0B:
         case 0x0E: { /* ALU OP */
-            struct operand_node *rs = instr->operand_list;
-            struct operand_node *rt = instr->operand_list->next;
+            struct operand_node *rt = instr->operand_list;
+            struct operand_node *rs = instr->operand_list->next;
             struct operand_node *imm = instr->operand_list->next->next;
             instruction = CREATE_INSTRUCTION_I(entry->opcode, rs->value.reg, rt->value.reg, imm->value.integer);
             break;
