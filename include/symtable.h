@@ -42,7 +42,7 @@
 #define SYMBOL_DOUBLY       0x2
 
 /* Type definitions */
-typedef int32_t  offset_t;
+typedef uint32_t offset_t;
 typedef uint32_t segment_t;
 typedef uint16_t datasize_t;
 typedef uint8_t  symstat_t; 
@@ -64,9 +64,6 @@ struct symbol_table {
     size_t bucket_size;                     /* Total number of buckets */
     size_t length;                          /* Total elements in array */
 };
-
-/* Global access to symbol table */
-extern struct symbol_table *symbol_table;
 
 /* Function prototypes */
 struct symbol_table *create_symbol_table();
