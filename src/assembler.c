@@ -364,36 +364,6 @@ struct operand_node *operand_list_cfg() {
     return root;
 }
 
-int is_symbol_defined(const char *symbol) {
-    struct symbol_table_entry *sym_entry = get_symbol_table(cfg_assembler->symbol_table, symbol);
-    if(sym_entry == NULL) {
-        insert_symbol_table(cfg_assembler->symbol_table, symbol);
-        return 0;
-    }
-    return sym_entry->status != SYMBOL_UNDEFINED;
-}
-    //  if(sym_entry == NULL) {
-    //             insert_front(cfg_assembler->decl_symlist, insert_symbol_table(cfg_assembler->symbol_table, label->identifier));
-    //             insert_front(sym_entry->instr_list, (void *)instr);
-    //             inc_segment_offset(0x8);
-    //             return 0;
-    //         }
-    //         else {
-    //             if(sym_entry->status == SYMBOL_UNDEFINED) {
-    //                 insert_front(sym_entry->instr_list, (void *)instr);
-    //                 inc_segment_offset(0x8);
-    //                 return 0;
-    //             }
-    //             else {
-    //                 instruction = CREATE_INSTRUCTION_I(0x0F, 0, rd->value.reg, (sym_entry->offset >> 16));
-    //                 write_segment_memory((void *)&instruction, 0x4);
-    //                 inc_segment_offset(0x4);
-    //                 instruction = CREATE_INSTRUCTION_I(0x0D, 0, rd->value.reg, sym_entry->offset);
-    //                 write_segment_memory((void *)&instruction, 0x4);
-    //                 inc_segment_offset(0x4);
-    //             }   
-    //         }
-
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Function: verify_operand_list
  * Purpose: Given an entry in the reserved table, it checks the operand list
@@ -441,6 +411,7 @@ int verify_operand_list(struct reserved_entry *res_entry, struct operand_node *o
                 break;
             } else {
                 if(current_operand == NULL || !(entry->operand[i] & current_operand->operand)) {
+                    if(entry->operand[i] & OPERAND_OPTIONAL) continue;
                     report_cfg("Invalid operand combiniation for %s '%s' on line %ld", op_string, res_entry->id, cfg_assembler->lineno);
                     return 0;
                 }
@@ -451,6 +422,11 @@ int verify_operand_list(struct reserved_entry *res_entry, struct operand_node *o
             }
             current_operand = current_operand->next;
         }
+    }
+
+    if(current_operand != NULL) {
+        report_cfg("Invalid operand combiniation for %s '%s' on line %ld", op_string, res_entry->id, cfg_assembler->lineno);
+        return 0;
     }
 
     return 1;
@@ -1000,6 +976,12 @@ struct instruction_node *instruction_cfg() {
             node->next = NULL;
 
             match_cfg(TOK_DIRECTIVE);
+
+            /* Error recovery ignore commas */
+            while(cfg_assembler->lookahead == TOK_COMMA) {
+                match_cfg(TOK_COMMA);
+            }
+
             switch(cfg_assembler->lookahead) {
                 case TOK_IDENTIFIER:
                 case TOK_INTEGER:
@@ -1025,6 +1007,12 @@ struct instruction_node *instruction_cfg() {
             node->next = NULL;
             
             match_cfg(TOK_MNEMONIC);
+
+            /* Error recovery ignore commas */
+            while(cfg_assembler->lookahead == TOK_COMMA) {
+                match_cfg(TOK_COMMA);
+            }
+
             switch(cfg_assembler->lookahead) {
                 case TOK_IDENTIFIER:
                 case TOK_INTEGER:
@@ -1223,17 +1211,16 @@ astatus_t execute_assembler(struct assembler *assembler, const char **files, siz
     if(assembler->status == ASSEMBLER_STATUS_OK) {
         for(segment_t segment = 0; segment < MAX_SEGMENTS; ++segment) {
             if(assembler->segment_memory_offset[segment] == 0) continue;
-            // printf("[ * Memory Segment %-4s * ]", segment_string[segment]);
-            for(int i = 0; i < assembler->segment_memory_offset[segment]; i+=4) {
-                // if((i & (0x3)) == 0) printf("\n0x%08X  ", segment_offset_base[segment] + i);
-                printf("%08x\n", *((instruction_t *)(assembler->segment_memory[segment] + i)));
-                // unsigned char c = *((unsigned char *)assembler->segment_memory[segment] + i);
-                // printf("\\%02X ", c);
+            printf("[ * Memory Segment %-4s * ]", segment_string[segment]);
+            for(int i = 0; i < assembler->segment_memory_offset[segment]; i++) {
+                if((i & (0x3)) == 0) printf("\n0x%08X  ", segment_offset_base[segment] + i);
+                unsigned char c = *((unsigned char *)assembler->segment_memory[segment] + i);
+                printf("\\%02X ", c);
             }
-            //printf("\n\n");
+            printf("\n\n");
         }
     }
-    //print_symbol_table(assembler->symbol_table);
+    print_symbol_table(assembler->symbol_table);
     #endif
 
     /* Destory tokenizer list */

@@ -30,8 +30,9 @@
 typedef enum { init_state, comma_accept, colon_accept, left_paren_accept,
                right_paren_accept, identifier_state, identifier_accept,
                integer_state, integer_accept, hex_state, zero_state,
-               eof_accept, comment_state, comment_accept, negative_state,
-               string_state, string_accept, eol_accept, invalid_state } state_fsm;
+               character_state, character_accept, eof_accept, comment_state, 
+               comment_accept, negative_state, string_state, string_accept, 
+               eol_accept, invalid_state } state_fsm;
 
 /* Reserved keyword table */
 struct reserved_entry reserved_table[] = {
