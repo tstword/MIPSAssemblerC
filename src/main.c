@@ -1,8 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <errno.h>
+
+#ifndef _WIN32
+#include <unistd.h>
+#endif
 
 #include "assembler.h"
 #include "mipsfhdr.h"
@@ -69,11 +72,25 @@ void write_object_file(FILE *fp, struct assembler *assembler) {
     }
 }
 
+void display_help_msg(char *program) {
+    printf("Usage: %s [-a] [-h] [-o output] file...\n", program);
+    printf("A MIPS assembler written in C\n\n");
+    printf("The following options may be used:\n");
+    printf("  %-20s Only assembles program, does not create object file\n", "-a");
+    printf("  %-20s Displays this message\n", "-h");
+    printf("  %-20s Stores object code in <output>\n\n", "-o <output>");
+    printf("Refer to the repository at <https://github.com/tstword/MIPSAssemblerC>\n");
+    exit(EXIT_SUCCESS);
+}
+
 int main(int argc, char *argv[]) {
     FILE *output_fp = NULL;
     const char *output_file = "a.obj";
-    int assemble_only = 0;
+    int assemble_only = 0, display_help = 0;
+    char **input_file;
+    size_t file_count;
     
+#ifndef _WIN32
     int opt;
     while((opt = getopt(argc, argv, "aho:")) != -1) {
         switch(opt) {
@@ -81,14 +98,8 @@ int main(int argc, char *argv[]) {
                 assemble_only = 1;
                 break;
             case 'h':
-                printf("Usage: %s [-h] [-a] [-o OUTPUT] FILE\n", argv[0]);
-                printf("A MIPS assembler written in C\n\n");
-                printf("The following options may be used:\n");
-                printf("  -h\t\tDisplays this message\n");
-                printf("  -a\t\tOnly assembles program, does not create object file\n");
-                printf("  -o\t\tFile to store object code in\n\n");
-                printf("Refer to the repository at <https://github.com/tstword/NewMIPSAssembler>\n");
-                return EXIT_SUCCESS;
+                display_help = 1;
+                break;
             case 'o':
                 output_file = optarg;
                 break;
@@ -98,14 +109,63 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    if(optind >= argc) {
+    input_file = argv + optind;
+    file_count = argc - optind;
+#else
+    /* Grr we have to parse manually, sloppy but will get the job done */
+    input_file = (char **)malloc(sizeof(char *) * (argc - 1));
+    file_count = 0;
+
+    int skip_index = 0;
+
+    for(int i = 1; i < argc; ++i) {
+        if(*(argv[i]) == '-') {
+            while(*(++argv[i])) {
+                switch(*(argv[i])) {
+                    case 'a':
+                        assemble_only = 1;
+                        break;
+                    case 'h':
+                        display_help = 1;
+                        break;
+                    case 'o':
+                        if(i + 1 == argc || *(argv[i + 1]) == '-') {
+                            fprintf(stderr, "%s: option requires an argument -- 'o'\n", argv[0]);
+                            return EXIT_FAILURE;
+                        }
+                        output_file = argv[i + 1];
+                        skip_index = 1;
+                        break;
+                    default: /* ? */
+                        fprintf(stderr, "%s: invalid option -- '%c'\n", argv[0], *(argv[i]));
+                        fprintf(stderr, "\nSee '%s -h' for more information\n", argv[0]);
+                        return EXIT_FAILURE;
+                }
+            }
+            if(skip_index) {
+                skip_index = 0;
+                ++i;
+            }
+        }
+        else {
+            input_file[file_count++] = argv[i];
+        }
+    }
+#endif
+
+    if(display_help) display_help_msg(argv[0]);
+
+    if(file_count == 0) {
         fprintf(stderr, "%s: Error: no input files\n", argv[0]);
         fprintf(stderr, "\nSee '%s -h' for more information\n", argv[0]);
         return EXIT_FAILURE;
     }
 
     struct assembler *assembler = create_assembler();
-    astatus_t status = execute_assembler(assembler, (const char **)(argv + optind), argc - optind);
+    astatus_t status = execute_assembler(assembler, (const char **)input_file, file_count);
+#ifdef _WIN32
+    free(input_file)
+#endif
     if(status != ASSEMBLER_STATUS_OK) {
         fprintf(stderr, "\nFailed to assemble program\n");
         return EXIT_FAILURE;
@@ -116,8 +176,6 @@ int main(int argc, char *argv[]) {
             return EXIT_FAILURE;
         }
         write_object_file(output_fp, assembler);
-        //fwrite(assembler->segment_memory[SEGMENT_TEXT], 1, assembler->segment_memory_offset[SEGMENT_TEXT], output_fp);
-        //fwrite(assembler->segment_memory[SEGMENT_DATA], 1, assembler->segment_memory_offset[SEGMENT_DATA], output_fp);
         fclose(output_fp);
     }
     destroy_assembler(&assembler);

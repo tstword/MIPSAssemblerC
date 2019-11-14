@@ -36,70 +36,70 @@ typedef enum { init_state, comma_accept, colon_accept, left_paren_accept,
 
 /* Reserved keyword table */
 struct reserved_entry reserved_table[] = {
-    { "$0"      , TOK_REGISTER, .attrval = 0  },
-    { "$1"      , TOK_REGISTER, .attrval = 1  },
-    { "$10"     , TOK_REGISTER, .attrval = 10 },
-    { "$11"     , TOK_REGISTER, .attrval = 11 },
-    { "$12"     , TOK_REGISTER, .attrval = 12 },
-    { "$13"     , TOK_REGISTER, .attrval = 13 },
-    { "$14"     , TOK_REGISTER, .attrval = 14 },
-    { "$15"     , TOK_REGISTER, .attrval = 15 },
-    { "$16"     , TOK_REGISTER, .attrval = 16 },
-    { "$17"     , TOK_REGISTER, .attrval = 17 },
-    { "$18"     , TOK_REGISTER, .attrval = 18 },
-    { "$19"     , TOK_REGISTER, .attrval = 19 },
-    { "$2"      , TOK_REGISTER, .attrval = 2  },
-    { "$20"     , TOK_REGISTER, .attrval = 20 },
-    { "$21"     , TOK_REGISTER, .attrval = 21 },
-    { "$22"     , TOK_REGISTER, .attrval = 22 },
-    { "$23"     , TOK_REGISTER, .attrval = 23 },
-    { "$24"     , TOK_REGISTER, .attrval = 24 },
-    { "$25"     , TOK_REGISTER, .attrval = 25 },
-    { "$26"     , TOK_REGISTER, .attrval = 26 },
-    { "$27"     , TOK_REGISTER, .attrval = 27 },
-    { "$28"     , TOK_REGISTER, .attrval = 28 },
-    { "$29"     , TOK_REGISTER, .attrval = 29 },
-    { "$3"      , TOK_REGISTER, .attrval = 3  },
-    { "$30"     , TOK_REGISTER, .attrval = 30 },
-    { "$31"     , TOK_REGISTER, .attrval = 31 },
-    { "$4"      , TOK_REGISTER, .attrval = 4  },
-    { "$5"      , TOK_REGISTER, .attrval = 5  },
-    { "$6"      , TOK_REGISTER, .attrval = 6  },
-    { "$7"      , TOK_REGISTER, .attrval = 7  },
-    { "$8"      , TOK_REGISTER, .attrval = 8  },
-    { "$9"      , TOK_REGISTER, .attrval = 9  },
-    { "$a0"     , TOK_REGISTER, .attrval = 4  },
-    { "$a1"     , TOK_REGISTER, .attrval = 5  },
-    { "$a2"     , TOK_REGISTER, .attrval = 6  },
-    { "$a3"     , TOK_REGISTER, .attrval = 7  },
-    { "$at"     , TOK_REGISTER, .attrval = 1  },
-    { "$fp"     , TOK_REGISTER, .attrval = 30 },
-    { "$gp"     , TOK_REGISTER, .attrval = 28 },
-    { "$k0"     , TOK_REGISTER, .attrval = 26 },
-    { "$k1"     , TOK_REGISTER, .attrval = 27 },
-    { "$ra"     , TOK_REGISTER, .attrval = 31 },
-    { "$s0"     , TOK_REGISTER, .attrval = 16 },
-    { "$s1"     , TOK_REGISTER, .attrval = 17 },
-    { "$s2"     , TOK_REGISTER, .attrval = 18 },
-    { "$s3"     , TOK_REGISTER, .attrval = 19 },
-    { "$s4"     , TOK_REGISTER, .attrval = 20 },
-    { "$s5"     , TOK_REGISTER, .attrval = 21 },
-    { "$s6"     , TOK_REGISTER, .attrval = 22 },
-    { "$s7"     , TOK_REGISTER, .attrval = 23 },
-    { "$sp"     , TOK_REGISTER, .attrval = 29 },
-    { "$t0"     , TOK_REGISTER, .attrval = 8  },
-    { "$t1"     , TOK_REGISTER, .attrval = 9  },
-    { "$t2"     , TOK_REGISTER, .attrval = 10 },
-    { "$t3"     , TOK_REGISTER, .attrval = 11 },
-    { "$t4"     , TOK_REGISTER, .attrval = 12 },
-    { "$t5"     , TOK_REGISTER, .attrval = 13 },
-    { "$t6"     , TOK_REGISTER, .attrval = 14 },
-    { "$t7"     , TOK_REGISTER, .attrval = 15 },
-    { "$t8"     , TOK_REGISTER, .attrval = 24 },
-    { "$t9"     , TOK_REGISTER, .attrval = 25 },
-    { "$v0"     , TOK_REGISTER, .attrval = 2  },
-    { "$v1"     , TOK_REGISTER, .attrval = 3  },
-    { "$zero"   , TOK_REGISTER, .attrval = 0  },
+    { "$0"      , TOK_REGISTER, NULL,  0  },
+    { "$1"      , TOK_REGISTER, NULL,  1  },
+    { "$10"     , TOK_REGISTER, NULL,  10 },
+    { "$11"     , TOK_REGISTER, NULL,  11 },
+    { "$12"     , TOK_REGISTER, NULL,  12 },
+    { "$13"     , TOK_REGISTER, NULL,  13 },
+    { "$14"     , TOK_REGISTER, NULL,  14 },
+    { "$15"     , TOK_REGISTER, NULL,  15 },
+    { "$16"     , TOK_REGISTER, NULL,  16 },
+    { "$17"     , TOK_REGISTER, NULL,  17 },
+    { "$18"     , TOK_REGISTER, NULL,  18 },
+    { "$19"     , TOK_REGISTER, NULL,  19 },
+    { "$2"      , TOK_REGISTER, NULL,  2  },
+    { "$20"     , TOK_REGISTER, NULL,  20 },
+    { "$21"     , TOK_REGISTER, NULL,  21 },
+    { "$22"     , TOK_REGISTER, NULL,  22 },
+    { "$23"     , TOK_REGISTER, NULL,  23 },
+    { "$24"     , TOK_REGISTER, NULL,  24 },
+    { "$25"     , TOK_REGISTER, NULL,  25 },
+    { "$26"     , TOK_REGISTER, NULL,  26 },
+    { "$27"     , TOK_REGISTER, NULL,  27 },
+    { "$28"     , TOK_REGISTER, NULL,  28 },
+    { "$29"     , TOK_REGISTER, NULL,  29 },
+    { "$3"      , TOK_REGISTER, NULL,  3  },
+    { "$30"     , TOK_REGISTER, NULL,  30 },
+    { "$31"     , TOK_REGISTER, NULL,  31 },
+    { "$4"      , TOK_REGISTER, NULL,  4  },
+    { "$5"      , TOK_REGISTER, NULL,  5  },
+    { "$6"      , TOK_REGISTER, NULL,  6  },
+    { "$7"      , TOK_REGISTER, NULL,  7  },
+    { "$8"      , TOK_REGISTER, NULL,  8  },
+    { "$9"      , TOK_REGISTER, NULL,  9  },
+    { "$a0"     , TOK_REGISTER, NULL,  4  },
+    { "$a1"     , TOK_REGISTER, NULL,  5  },
+    { "$a2"     , TOK_REGISTER, NULL,  6  },
+    { "$a3"     , TOK_REGISTER, NULL,  7  },
+    { "$at"     , TOK_REGISTER, NULL,  1  },
+    { "$fp"     , TOK_REGISTER, NULL,  30 },
+    { "$gp"     , TOK_REGISTER, NULL,  28 },
+    { "$k0"     , TOK_REGISTER, NULL,  26 },
+    { "$k1"     , TOK_REGISTER, NULL,  27 },
+    { "$ra"     , TOK_REGISTER, NULL,  31 },
+    { "$s0"     , TOK_REGISTER, NULL,  16 },
+    { "$s1"     , TOK_REGISTER, NULL,  17 },
+    { "$s2"     , TOK_REGISTER, NULL,  18 },
+    { "$s3"     , TOK_REGISTER, NULL,  19 },
+    { "$s4"     , TOK_REGISTER, NULL,  20 },
+    { "$s5"     , TOK_REGISTER, NULL,  21 },
+    { "$s6"     , TOK_REGISTER, NULL,  22 },
+    { "$s7"     , TOK_REGISTER, NULL,  23 },
+    { "$sp"     , TOK_REGISTER, NULL,  29 },
+    { "$t0"     , TOK_REGISTER, NULL,  8  },
+    { "$t1"     , TOK_REGISTER, NULL,  9  },
+    { "$t2"     , TOK_REGISTER, NULL,  10 },
+    { "$t3"     , TOK_REGISTER, NULL,  11 },
+    { "$t4"     , TOK_REGISTER, NULL,  12 },
+    { "$t5"     , TOK_REGISTER, NULL,  13 },
+    { "$t6"     , TOK_REGISTER, NULL,  14 },
+    { "$t7"     , TOK_REGISTER, NULL,  15 },
+    { "$t8"     , TOK_REGISTER, NULL,  24 },
+    { "$t9"     , TOK_REGISTER, NULL,  25 },
+    { "$v0"     , TOK_REGISTER, NULL,  2  },
+    { "$v1"     , TOK_REGISTER, NULL,  3  },
+    { "$zero"   , TOK_REGISTER, NULL,  0  },
     { ".align"  , TOK_DIRECTIVE, opcode_table + DIRECTIVE_ALIGN   },
     { ".ascii"  , TOK_DIRECTIVE, opcode_table + DIRECTIVE_ASCII   },
     { ".asciiz" , TOK_DIRECTIVE, opcode_table + DIRECTIVE_ASCIIZ  },
@@ -208,7 +208,7 @@ int tgetc(struct tokenizer *tokenizer) {
     /* Adjust tokenizer buffer if necessary */
     if(tokenizer->bufpos >= tokenizer->bufsize) {
         tokenizer->bufsize <<= 1;
-        tokenizer->lexbuf = realloc(tokenizer->lexbuf, tokenizer->bufsize);
+        tokenizer->lexbuf = (char *)realloc(tokenizer->lexbuf, tokenizer->bufsize);
     }
 
     tokenizer->lexbuf[tokenizer->bufpos++] = ch;
@@ -257,7 +257,7 @@ void report_fsm(struct tokenizer *tokenizer, const char *fmt, ...) {
 
     if(bufsize > tokenizer->errsize) {
         tokenizer->errsize = bufsize;
-        tokenizer->errmsg = realloc(tokenizer->errmsg, bufsize);
+        tokenizer->errmsg = (char *)realloc(tokenizer->errmsg, bufsize);
     }
 
     va_start(vargs, fmt);
@@ -565,7 +565,7 @@ token_t return_token(token_t token, struct tokenizer *tokenizer) {
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 struct tokenizer *create_tokenizer(const char *file) {
     /* Create the tokenizer struct */
-    struct tokenizer *tokenizer = malloc(sizeof(struct tokenizer));
+    struct tokenizer *tokenizer = (struct tokenizer *)malloc(sizeof(struct tokenizer));
     
     /* Failed to allocate space */
     if(tokenizer == NULL) { return NULL; }
@@ -580,7 +580,7 @@ struct tokenizer *create_tokenizer(const char *file) {
     }
 
     /* Create string buffer */
-    tokenizer->lexbuf = malloc(32);
+    tokenizer->lexbuf = (char *)malloc(32);
     
     /* Failed to allocate space */
     if(tokenizer->lexbuf == NULL) { 

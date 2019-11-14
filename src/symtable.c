@@ -55,9 +55,9 @@ size_t djb2hash(const char *str) {
  * @return Address of the allocated symbol table structure
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 struct symbol_table *create_symbol_table() {
-    struct symbol_table *symtab = malloc(sizeof(struct symbol_table));
+    struct symbol_table *symtab = (struct symbol_table *)malloc(sizeof(struct symbol_table));
     
-    symtab->buckets = calloc(32, sizeof(struct symbol_table_entry));
+    symtab->buckets = (struct symbol_table_entry **)calloc(32, sizeof(struct symbol_table_entry));
     symtab->bucket_size = 32;
     symtab->length = 0;
 
@@ -97,7 +97,7 @@ void percolate_symbol_table(struct symbol_table *symtab) {
         
         symtab->bucket_size <<= 1;
         symtab->length = 0;
-        symtab->buckets = calloc(symtab->bucket_size, sizeof(struct symbol_table_entry));
+        symtab->buckets = (struct symbol_table_entry **)calloc(symtab->bucket_size, sizeof(struct symbol_table_entry));
 
         for(size_t i = 0; i < prev_size; ++i) {
             struct symbol_table_entry *head = prev_buckets[i], *next_head;
@@ -127,7 +127,7 @@ void percolate_symbol_table(struct symbol_table *symtab) {
  * @return Address of the new entry
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 struct symbol_table_entry *insert_symbol_table(struct symbol_table *symtab, const char *key) {
-    struct symbol_table_entry *item = malloc(sizeof(struct symbol_table_entry));
+    struct symbol_table_entry *item = (struct symbol_table_entry *)malloc(sizeof(struct symbol_table_entry));
     
     item->key = strdup(key);
     item->status = SYMBOL_UNDEFINED;

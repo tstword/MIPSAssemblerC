@@ -85,7 +85,7 @@ void report_cfg(const char *fmt, ...) {
         bufsize = vsnprintf(NULL, 0, fmt, vargs) + 1;
         va_end(vargs);
 
-        buffer = malloc(bufsize * sizeof(char));
+        buffer = (char *)malloc(bufsize * sizeof(char));
 
         va_start(vargs, fmt);
         vsnprintf(buffer, bufsize, fmt, vargs);
@@ -138,15 +138,15 @@ void write_segment_memory(void *buf, size_t size) {
     if(next_offset > cfg_assembler->segment_memory_size[segment]) {
         size_t mem_offset = cfg_assembler->segment_memory_size[segment];
         cfg_assembler->segment_memory_size[segment] += 1024;
-        cfg_assembler->segment_memory[segment] = realloc(cfg_assembler->segment_memory[segment], cfg_assembler->segment_memory_size[segment]);
-        memset(cfg_assembler->segment_memory[segment] + mem_offset, 0, 1024);
+        cfg_assembler->segment_memory[segment] = (void *)realloc(cfg_assembler->segment_memory[segment], cfg_assembler->segment_memory_size[segment]);
+        memset((char *)cfg_assembler->segment_memory[segment] + mem_offset, 0, 1024);
         if(cfg_assembler->segment_memory[segment] == NULL) {
             fprintf(stderr, "Failed to allocate memory for segment: %s\n", strerror(errno));
             cfg_assembler->status = ASSEMBLER_STATUS_FAIL;
             return;
         }
     }
-    memcpy(cfg_assembler->segment_memory[segment] + buf_offset, buf, size);
+    memcpy((char *)cfg_assembler->segment_memory[segment] + buf_offset, buf, size);
     if(next_offset > cfg_assembler->segment_memory_offset[segment]) {
         cfg_assembler->segment_memory_offset[segment] = next_offset;
     }
@@ -245,7 +245,7 @@ struct operand_node *operand_cfg() {
             int value = cfg_assembler->tokenizer->attrval;
             match_cfg(TOK_REGISTER);
             
-            node = malloc(sizeof(struct operand_node));
+            node = (struct operand_node *)malloc(sizeof(struct operand_node));
             node->operand = OPERAND_REGISTER;
             node->identifier = NULL;
             node->value.reg = value;
@@ -257,7 +257,7 @@ struct operand_node *operand_cfg() {
             char *id = strdup(cfg_assembler->tokenizer->lexbuf);
             match_cfg(TOK_IDENTIFIER);
             
-            node = malloc(sizeof(struct operand_node));
+            node = (struct operand_node *)malloc(sizeof(struct operand_node));
             node->operand = OPERAND_LABEL;
             node->identifier = id;
             node->next = NULL;
@@ -268,7 +268,7 @@ struct operand_node *operand_cfg() {
             char *id = strdup(cfg_assembler->tokenizer->lexbuf);
             match_cfg(TOK_STRING);
             
-            node = malloc(sizeof(struct operand_node));
+            node = (struct operand_node *)malloc(sizeof(struct operand_node));
             node->operand = OPERAND_STRING;
             node->identifier = id;
             node->next = NULL;
@@ -279,7 +279,7 @@ struct operand_node *operand_cfg() {
             int value = cfg_assembler->tokenizer->attrval;
             match_cfg(TOK_INTEGER);
             
-            node = malloc(sizeof(struct operand_node));
+            node = (struct operand_node *)malloc(sizeof(struct operand_node));
             node->operand = OPERAND_IMMEDIATE;
             node->identifier = NULL;
             node->value.integer = value;
@@ -299,7 +299,7 @@ struct operand_node *operand_cfg() {
             match_cfg(TOK_LPAREN);
             int reg_value = cfg_assembler->tokenizer->attrval;
             if(match_cfg(TOK_REGISTER) && match_cfg(TOK_RPAREN)) {
-                node = malloc(sizeof(struct operand_node));
+                node = (struct operand_node *)malloc(sizeof(struct operand_node));
                 node->operand = OPERAND_ADDRESS;
                 node->value.reg = reg_value;
                 node->value.integer = 0;
@@ -435,7 +435,7 @@ int verify_operand_list(struct reserved_entry *res_entry, struct operand_node *o
 int assemble_psuedo_instruction(struct instruction_node *instr) {
     instruction_t instruction[MAX_INSTRUCTIONS];
 
-    struct opcode_entry *entry = instr->mnemonic->attrptr;
+    struct opcode_entry *entry = (struct opcode_entry *)instr->mnemonic->attrptr;
     uint32_t instr_size = entry->size;
 
     int assemble_status = 1; /* Assume instruction is assembled */
@@ -592,7 +592,7 @@ int assemble_psuedo_instruction(struct instruction_node *instr) {
 int assemble_funct_instruction(struct instruction_node *instr) {
     instruction_t instruction = 0;
 
-    struct opcode_entry *entry = instr->mnemonic->attrptr;
+    struct opcode_entry *entry = (struct opcode_entry *)instr->mnemonic->attrptr;
 
     switch(entry->funct) {
         case 0x21:
@@ -660,7 +660,7 @@ int assemble_funct_instruction(struct instruction_node *instr) {
 int assemble_opcode_instruction(struct instruction_node *instr) {
     instruction_t instruction = 0;
 
-    struct opcode_entry *entry = instr->mnemonic->attrptr;
+    struct opcode_entry *entry = (struct opcode_entry *)instr->mnemonic->attrptr;
     int assemble_status = 1; /* Assume instruction is assembled */
 
     switch(entry->opcode) {
@@ -796,7 +796,7 @@ int assemble_instruction(struct instruction_node *instr) {
         return 0;
     }
 
-    struct opcode_entry *entry = instr->mnemonic->attrptr;
+    struct opcode_entry *entry = (struct opcode_entry *)instr->mnemonic->attrptr;
 
     if(entry->type == OPTYPE_PSUEDO) {
         assemble_status = assemble_psuedo_instruction(instr);
@@ -969,8 +969,8 @@ struct instruction_node *instruction_cfg() {
 
     switch(cfg_assembler->lookahead) {
         case TOK_DIRECTIVE: {
-            node = malloc(sizeof(struct instruction_node));
-            node->mnemonic = cfg_assembler->tokenizer->attrptr;
+            node = (struct instruction_node *)malloc(sizeof(struct instruction_node));
+            node->mnemonic = (struct reserved_entry *)cfg_assembler->tokenizer->attrptr;
             node->offset = cfg_assembler->segment_offset[cfg_assembler->segment];
             node->segment = cfg_assembler->segment;
             node->next = NULL;
@@ -1000,8 +1000,8 @@ struct instruction_node *instruction_cfg() {
             break;
         }
         case TOK_MNEMONIC:
-            node = malloc(sizeof(struct instruction_node));
-            node->mnemonic = cfg_assembler->tokenizer->attrptr;
+            node = (struct instruction_node *)malloc(sizeof(struct instruction_node));
+            node->mnemonic = (struct reserved_entry *)cfg_assembler->tokenizer->attrptr;
             node->offset = cfg_assembler->segment_offset[cfg_assembler->segment];
             node->segment = cfg_assembler->segment;
             node->next = NULL;
@@ -1057,7 +1057,7 @@ void instruction_list_cfg() {
             if(cfg_assembler->tokenizer_list->front == NULL) return;  
             
             /* Setup tokenizer */
-            cfg_assembler->tokenizer = cfg_assembler->tokenizer_list->front->value;
+            cfg_assembler->tokenizer = (struct tokenizer *)cfg_assembler->tokenizer_list->front->value;
 
             /* Setup lookahead */
             cfg_assembler->lookahead = get_next_token(cfg_assembler->tokenizer);
@@ -1088,7 +1088,7 @@ void program_cfg(struct assembler *assembler) {
             fprintf(stderr, "Symbol Error: Undefined symbol '%s'\n", ((struct symbol_table_entry *)head->value)->key);
             struct list_node *instr_ref = sym_entry->instr_list->front;
             while(instr_ref != NULL) {
-                destroy_instruction(instr_ref->value);
+                destroy_instruction((struct instruction_node *)instr_ref->value);
                 instr_ref = instr_ref->next;
             }
             assembler->status = ASSEMBLER_STATUS_FAIL;
@@ -1098,14 +1098,14 @@ void program_cfg(struct assembler *assembler) {
                 if(((struct instruction_node *)instr_ref->value)->mnemonic->token == TOK_MNEMONIC) {
                     assembler->segment = ((struct instruction_node *)instr_ref->value)->segment;
                     assembler->segment_offset[assembler->segment] = ((struct instruction_node *)instr_ref->value)->offset;
-                    assemble_instruction(instr_ref->value); 
-                    destroy_instruction(instr_ref->value);
+                    assemble_instruction((struct instruction_node *)instr_ref->value); 
+                    destroy_instruction((struct instruction_node *)instr_ref->value);
                 }
                 else if(((struct instruction_node *)instr_ref->value)->mnemonic->token == TOK_DIRECTIVE) {
                     assembler->segment = ((struct instruction_node *)instr_ref->value)->segment;
                     assembler->segment_offset[assembler->segment] = ((struct instruction_node *)instr_ref->value)->offset;
-                    check_directive(instr_ref->value); 
-                    destroy_instruction(instr_ref->value);
+                    check_directive((struct instruction_node *)instr_ref->value); 
+                    destroy_instruction((struct instruction_node *)instr_ref->value);
                 }
                 instr_ref = instr_ref->next;
             }
@@ -1128,7 +1128,7 @@ void destroy_tokenizer_list(struct assembler *assembler) {
  * @return Pointer to the allocated parser structure
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 struct assembler *create_assembler() {
-    struct assembler *assembler = malloc(sizeof(struct assembler));
+    struct assembler *assembler = (struct assembler *)malloc(sizeof(struct assembler));
 
     assembler->tokenizer = NULL;
     assembler->tokenizer_list = NULL;

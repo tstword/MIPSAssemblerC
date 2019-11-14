@@ -75,12 +75,10 @@ struct tokenizer {
 
 /* Reserved keywords table */
 struct reserved_entry { 
-    const char* id;         /* Reserved identifier */ 
-    token_t     token;      /* Matching token */
-    union {
-        void*   attrptr;    /* Generic Attribute */
-        int     attrval;    /* Integer Attribute */
-    };
+    const char* id;     /* Reserved identifier */ 
+    token_t     token;  /* Matching token */
+    void*   attrptr;    /* Generic Attribute */
+    int     attrval;    /* Integer Attribute */
 };
 
 /* Function prototypes */
