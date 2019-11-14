@@ -612,7 +612,7 @@ struct tokenizer *create_tokenizer(const char *file) {
 
     /* Store filename */
     tokenizer->filename = (char *)malloc(sizeof(char) * (strlen(file) + 1));
-    strcpy(tokenizer->filename, file);
+    memcpy((void *)tokenizer->filename, (void *)file, sizeof(char) * (strlen(file) + 1));
 
     return tokenizer;
 }

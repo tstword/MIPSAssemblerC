@@ -191,6 +191,13 @@ void end_line_cfg() {
     }
 }
 
+char *cfg_strdup(char *source) {
+    int buffer_size = strlen(source) + 1;
+    char *buffer = (char *)malloc(sizeof(char) * buffer_size);
+    memcpy((void *)buffer, (void *)source, sizeof(char) * buffer_size);
+    return buffer;
+}
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Function: label_cfg
  * Purpose: Attempts to match the non-terminal for label. If matched, the label
@@ -198,10 +205,9 @@ void end_line_cfg() {
  * function report_cfg
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 void label_cfg() {
-    if(cfg_assembler->lookahead == TOK_IDENTIFIER) {
-        char *id = (char *)malloc(sizeof(char) * (strlen(cfg_assembler->tokenizer->lexbuf) + 1));
-        memcpy((void *)id, (void *)cfg_assembler->tokenizer->lexbuf, strlen(cfg_assembler->tokenizer->lexbuf) + 1);
-        
+    if(cfg_assembler->lookahead == TOK_IDENTIFIER) {    
+        char *id = cfg_strdup(cfg_assembler->tokenizer->lexbuf);
+
         match_cfg(TOK_IDENTIFIER);
         
         if(cfg_assembler->lookahead == TOK_COLON) {
@@ -257,9 +263,7 @@ struct operand_node *operand_cfg() {
             break;
         }
         case TOK_IDENTIFIER: {
-            char *id = (char *)malloc(sizeof(char) * (strlen(cfg_assembler->tokenizer->lexbuf) + 1));
-            memcpy((void *)id, (void *)cfg_assembler->tokenizer->lexbuf, strlen(cfg_assembler->tokenizer->lexbuf) + 1);
-            
+            char *id = cfg_strdup(cfg_assembler->tokenizer->lexbuf);
             match_cfg(TOK_IDENTIFIER);
             
             node = (struct operand_node *)malloc(sizeof(struct operand_node));
@@ -270,9 +274,7 @@ struct operand_node *operand_cfg() {
             break;
         }
         case TOK_STRING: {
-            char *id = (char *)malloc(sizeof(char) * (strlen(cfg_assembler->tokenizer->lexbuf) + 1));
-            memcpy((void *)id, (void *)cfg_assembler->tokenizer->lexbuf, strlen(cfg_assembler->tokenizer->lexbuf) + 1);
-            
+            char *id = cfg_strdup(cfg_assembler->tokenizer->lexbuf);
             match_cfg(TOK_STRING);
             
             node = (struct operand_node *)malloc(sizeof(struct operand_node));
