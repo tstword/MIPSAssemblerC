@@ -3,9 +3,7 @@
 #include <string.h>
 #include <errno.h>
 
-#ifdef _WIN32
-#define _CRT_SECURE_NO_WARNINGS
-#else
+#ifndef _WIN32
 #include <unistd.h>
 #endif
 
