@@ -141,7 +141,7 @@ void write_segment_memory(void *buf, size_t size) {
         cfg_assembler->segment_memory[segment] = (void *)realloc(cfg_assembler->segment_memory[segment], cfg_assembler->segment_memory_size[segment]);
         memset((char *)cfg_assembler->segment_memory[segment] + mem_offset, 0, 1024);
         if(cfg_assembler->segment_memory[segment] == NULL) {
-            fprintf(stderr, "Failed to allocate memory for segment: %s\n", strerror(errno));
+            perror("Failed to allocate memory for segment: ");
             cfg_assembler->status = ASSEMBLER_STATUS_FAIL;
             return;
         }
@@ -855,7 +855,8 @@ int check_directive(struct instruction_node *instr) {
             /* Create tokenizer structure */
             struct tokenizer *tokenizer = create_tokenizer(operand_list->identifier);
             if(tokenizer == NULL) {
-                fprintf(stderr, "Failed to include file '%s' on line %ld : %s\n", operand_list->identifier, cfg_assembler->lineno, strerror(errno));
+                fprintf(stderr, "Failed to include file '%s' on line %ld : ", operand_list->identifier, cfg_assembler->lineno);
+                perror(NULL);
                 cfg_assembler->status = ASSEMBLER_STATUS_FAIL;
                 destroy_instruction(instr);
                 assemble_status = 0;
@@ -1164,7 +1165,8 @@ astatus_t execute_assembler(struct assembler *assembler, const char **files, siz
     for(size_t i = 0; i < size; ++i) {
         struct tokenizer *tokenizer = create_tokenizer(files[i]);
         if(tokenizer == NULL) {
-            fprintf(stderr, "%s: Error: %s\n", files[i], strerror(errno));
+            fprintf(stderr, "%s: Error: ", files[i]);
+            perror(NULL);
             assembler->status = ASSEMBLER_STATUS_FAIL;
             destroy_tokenizer_list(assembler);
             return assembler->status;

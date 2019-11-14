@@ -37,7 +37,7 @@ void write_object_file(FILE *fp, struct assembler *assembler) {
     /* Write header to object file */
     nbytes = fwrite((void *)&file_hdr, 0x1, sizeof(file_hdr), fp);
     if(nbytes != sizeof(file_hdr)) {
-        fprintf(stderr, "Object Write Error: Failed to write file header: %s\n", strerror(errno));
+        perror("Object Write Error: Failed to write file header: ");
         exit(EXIT_FAILURE);
     }
 
@@ -57,13 +57,13 @@ void write_object_file(FILE *fp, struct assembler *assembler) {
 
             nbytes = fwrite((void *)&section_hdr, 0x1, sizeof(section_hdr), fp);
             if(nbytes != sizeof(section_hdr)) {
-                fprintf(stderr, "Object Write Error: Failed to write section header header: %s\n", strerror(errno));
+                perror("Object Write Error: Failed to write section header header: ");
                 exit(EXIT_FAILURE);
             }
 
             nbytes = fwrite(assembler->segment_memory[segment], 0x1, assembler->segment_memory_offset[segment], fp);
             if(nbytes != assembler->segment_memory_offset[segment]) {
-                fprintf(stderr, "Object Write Error: Failed to write memory to file: %s\n", strerror(errno));
+                perror("Object Write Error: Failed to write memory to file: ");
                 exit(EXIT_FAILURE);
             }
 
@@ -173,7 +173,8 @@ int main(int argc, char *argv[]) {
     }
     else if(!assemble_only) {
         if((output_fp = fopen(output_file, "wb+")) == NULL) {
-            fprintf(stderr, "Failed to open output file '%s' : %s\n", output_file, strerror(errno));
+            fprintf(stderr, "Failed to open output file '%s' : ", output_file);
+            perror(NULL);
             return EXIT_FAILURE;
         }
         write_object_file(output_fp, assembler);
