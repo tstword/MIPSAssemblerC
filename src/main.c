@@ -5,46 +5,55 @@
 #include <errno.h>
 
 #include "assembler.h"
-#include "objhdr.h"
+#include "mipsfhdr.h"
 
 void write_object_file(FILE *fp, struct assembler *assembler) {
-    struct mips_obj_fhdr fhdr = { {0}, {'m', 'i', 'p', 's'} };
+    struct MIPS_file_header file_hdr;
     size_t nbytes;
+
+    memset((void *)&file_hdr, 0, sizeof(file_hdr));
+
+    /* Magic number */
+    memcpy((void *)file_hdr.m_magic, "mips", 4);
 
     /* Endianness check */
     uint16_t endian = 0x0201; /* If little endian result is 1, big endian result is 2 */
-    fhdr.m_endianness = *((uint8_t *)&endian);
+    file_hdr.m_endianness = *((uint8_t *)&endian);
 
     /* Version */
-    fhdr.m_version = 0x1;
+    file_hdr.m_version = 0x1;
 
     /* Section header count */
-    fhdr.m_shnum = 0;
+    file_hdr.m_shnum = 0;
     for(segment_t segment = 0; segment < MAX_SEGMENTS; ++segment) {
         if(assembler->segment_memory_offset[segment] > 0) {
-            ++fhdr.m_shnum;
+            ++file_hdr.m_shnum;
         }
     }
 
     /* Write header to object file */
-    nbytes = fwrite((void *)&fhdr, 0x1, sizeof(fhdr), fp);
-    if(nbytes != sizeof(fhdr)) {
+    nbytes = fwrite((void *)&file_hdr, 0x1, sizeof(file_hdr), fp);
+    if(nbytes != sizeof(file_hdr)) {
         fprintf(stderr, "Object Write Error: Failed to write file header: %s\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
 
-    offset_t file_offset = sizeof(fhdr);
+    offset_t file_offset = sizeof(file_hdr);
 
     /* Write segment headers and their corresponding data */
-    struct mips_obj_shdr shdr = { {0, 0, 0 } };
+    struct MIPS_sect_header section_hdr;
+
+    /* Zero memory */
+    memset((void *)&section_hdr, 0, sizeof(section_hdr));
+
     for(segment_t segment = 0; segment < MAX_SEGMENTS; ++segment) {
         if(assembler->segment_memory_offset[segment] > 0) {
-            shdr.sh_segment = segment;
-            shdr.sh_offset = file_offset;
-            shdr.sh_size = assembler->segment_memory_offset[segment];
+            section_hdr.sh_segment = segment;
+            section_hdr.sh_offset = file_offset;
+            section_hdr.sh_size = assembler->segment_memory_offset[segment];
 
-            nbytes = fwrite((void *)&shdr, 0x1, sizeof(shdr), fp);
-            if(nbytes != sizeof(shdr)) {
+            nbytes = fwrite((void *)&section_hdr, 0x1, sizeof(section_hdr), fp);
+            if(nbytes != sizeof(section_hdr)) {
                 fprintf(stderr, "Object Write Error: Failed to write section header header: %s\n", strerror(errno));
                 exit(EXIT_FAILURE);
             }
@@ -55,7 +64,7 @@ void write_object_file(FILE *fp, struct assembler *assembler) {
                 exit(EXIT_FAILURE);
             }
 
-            file_offset += sizeof(shdr) + assembler->segment_memory_offset[segment];
+            file_offset += sizeof(section_hdr) + assembler->segment_memory_offset[segment];
         }
     }
 }
