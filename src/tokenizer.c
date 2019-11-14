@@ -611,7 +611,8 @@ struct tokenizer *create_tokenizer(const char *file) {
     tokenizer->attrptr = NULL;
 
     /* Store filename */
-    tokenizer->filename = strdup(file);
+    tokenizer->filename = (char *)malloc(sizeof(char) * (strlen(file) + 1));
+    strcpy(tokenizer->filename, file);
 
     return tokenizer;
 }

@@ -199,8 +199,11 @@ void end_line_cfg() {
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 void label_cfg() {
     if(cfg_assembler->lookahead == TOK_IDENTIFIER) {
-        char *id = strdup(cfg_assembler->tokenizer->lexbuf);
+        char *id = (char *)malloc(sizeof(char) * strlen(cfg_assembler->tokenizer->lexbuf));
+        strcpy(id, cfg_assembler->tokenizer->lexbuf);
+        
         match_cfg(TOK_IDENTIFIER);
+        
         if(cfg_assembler->lookahead == TOK_COLON) {
             match_cfg(TOK_COLON);
             struct symbol_table_entry *entry;
@@ -254,7 +257,9 @@ struct operand_node *operand_cfg() {
             break;
         }
         case TOK_IDENTIFIER: {
-            char *id = strdup(cfg_assembler->tokenizer->lexbuf);
+            char *id = (char *)malloc(sizeof(char) * strlen(cfg_assembler->tokenizer->lexbuf));
+            strcpy(id, cfg_assembler->tokenizer->lexbuf);
+            
             match_cfg(TOK_IDENTIFIER);
             
             node = (struct operand_node *)malloc(sizeof(struct operand_node));
@@ -265,7 +270,9 @@ struct operand_node *operand_cfg() {
             break;
         }
         case TOK_STRING: {
-            char *id = strdup(cfg_assembler->tokenizer->lexbuf);
+            char *id = (char *)malloc(sizeof(char) * strlen(cfg_assembler->tokenizer->lexbuf));
+            strcpy(id, cfg_assembler->tokenizer->lexbuf);
+            
             match_cfg(TOK_STRING);
             
             node = (struct operand_node *)malloc(sizeof(struct operand_node));
