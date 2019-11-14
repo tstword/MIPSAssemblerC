@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
     const char *output_file = "a.obj";
     int assemble_only = 0, display_help = 0;
     
-    char **input_array;
+    const char **input_array;
     size_t input_count;
     
 #ifndef _WIN32
@@ -109,20 +109,21 @@ int main(int argc, char *argv[]) {
                 return EXIT_FAILURE;
         }
     }
-    input_array = argv + optind;
+    input_array = (const char **)(argv + optind);
     input_count = argc - optind;
 #else
     /* Grr we have to parse manually, sloppy but will get the job done */
     /* We could use this parsing algorithm for Linux / Mac, but I trust getopt more */
     /* Windows users will have to report errors (if any) */
 
-    input_array = (char **)malloc((char *) * (argc - 1));
+    input_array = (const char **)malloc(sizeof(const char *) * (argc - 1));
     input_count = 0;
 
     int skip_index = 0, ch;
 
-    for(int i = 0; i < argc; ++i) {
+    for(int i = 1; i < argc; ++i) {
         if(argv[i][0] == '-') {
+            skip_index = 0;
             while((ch = *(++argv[i])) != '\0') {
                 switch(ch) {
                     case 'a':
@@ -147,13 +148,13 @@ int main(int argc, char *argv[]) {
             }
             if(skip_index) ++i;
         }
-        else input_array[input_count++] = argv[i];
+        else input_array[input_count++] = (const char *)argv[i];
     }
 #endif
 
     if(display_help) display_help_msg(argv[0]);
 
-    if(file_count == 0) {
+    if(input_count == 0) {
         fprintf(stderr, "%s: Error: no input files\n", argv[0]);
         fprintf(stderr, "\nSee '%s -h' for more information\n", argv[0]);
         return EXIT_FAILURE;
@@ -163,7 +164,7 @@ int main(int argc, char *argv[]) {
     astatus_t status = execute_assembler(assembler, input_array, input_count);
 
 #ifdef _WIN32
-    free(input_file);
+    free(input_file);   /* T'm annoyed that I have to do this but oh well, nothing to do right now. */
 #endif
 
     if(status != ASSEMBLER_STATUS_OK) {
