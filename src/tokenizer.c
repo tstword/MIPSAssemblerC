@@ -26,6 +26,12 @@
 
 #include "opcode.h"
 
+#ifdef _WIN64
+typedef long long ssize_t;
+#elif _WIN32
+typedef int ssize_t;
+#endif
+
 /* Finite state machine states */
 typedef enum { init_state, comma_accept, colon_accept, left_paren_accept,
                right_paren_accept, identifier_state, identifier_accept,

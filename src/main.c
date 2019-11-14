@@ -87,8 +87,9 @@ int main(int argc, char *argv[]) {
     FILE *output_fp = NULL;
     const char *output_file = "a.obj";
     int assemble_only = 0, display_help = 0;
-    char **input_file;
-    size_t file_count;
+    
+    char **input_array;
+    size_t input_count;
     
 #ifndef _WIN32
     int opt;
@@ -108,20 +109,22 @@ int main(int argc, char *argv[]) {
                 return EXIT_FAILURE;
         }
     }
-
-    input_file = argv + optind;
-    file_count = argc - optind;
+    input_array = argv + optind;
+    input_count = argc - optind;
 #else
     /* Grr we have to parse manually, sloppy but will get the job done */
-    input_file = (char **)malloc(sizeof(char *) * (argc - 1));
-    file_count = 0;
+    /* We could use this parsing algorithm for Linux / Mac, but I trust getopt more */
+    /* Windows users will have to report errors (if any) */
 
-    int skip_index = 0;
+    input_array = (char **)malloc((char *) * (argc - 1));
+    input_count = 0;
 
-    for(int i = 1; i < argc; ++i) {
-        if(*(argv[i]) == '-') {
-            while(*(++argv[i])) {
-                switch(*(argv[i])) {
+    int skip_index = 0, ch;
+
+    for(int i = 0; i < argc; ++i) {
+        if(argv[i][0] == '-') {
+            while((ch = *(++argv[i])) != '\0') {
+                switch(ch) {
                     case 'a':
                         assemble_only = 1;
                         break;
@@ -129,7 +132,7 @@ int main(int argc, char *argv[]) {
                         display_help = 1;
                         break;
                     case 'o':
-                        if(i + 1 == argc || *(argv[i + 1]) == '-') {
+                        if(i + 1 == argc || argv[i + 1][0] == '-') {
                             fprintf(stderr, "%s: option requires an argument -- 'o'\n", argv[0]);
                             return EXIT_FAILURE;
                         }
@@ -137,19 +140,14 @@ int main(int argc, char *argv[]) {
                         skip_index = 1;
                         break;
                     default: /* ? */
-                        fprintf(stderr, "%s: invalid option -- '%c'\n", argv[0], *(argv[i]));
+                        fprintf(stderr, "%s: invalid option -- '%c'\n", argv[0], ch);
                         fprintf(stderr, "\nSee '%s -h' for more information\n", argv[0]);
                         return EXIT_FAILURE;
                 }
             }
-            if(skip_index) {
-                skip_index = 0;
-                ++i;
-            }
+            if(skip_index) ++i;
         }
-        else {
-            input_file[file_count++] = argv[i];
-        }
+        else input_array[input_count++] = argv[i];
     }
 #endif
 
@@ -162,10 +160,12 @@ int main(int argc, char *argv[]) {
     }
 
     struct assembler *assembler = create_assembler();
-    astatus_t status = execute_assembler(assembler, (const char **)input_file, file_count);
+    astatus_t status = execute_assembler(assembler, input_array, input_count);
+
 #ifdef _WIN32
-    free(input_file)
+    free(input_file);
 #endif
+
     if(status != ASSEMBLER_STATUS_OK) {
         fprintf(stderr, "\nFailed to assemble program\n");
         return EXIT_FAILURE;
