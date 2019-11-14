@@ -191,13 +191,6 @@ void end_line_cfg() {
     }
 }
 
-char *cfg_strdup(char *source) {
-    int buffer_size = strlen(source) + 1;
-    char *buffer = (char *)malloc(sizeof(char) * buffer_size);
-    memcpy((void *)buffer, (void *)source, sizeof(char) * buffer_size);
-    return buffer;
-}
-
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Function: label_cfg
  * Purpose: Attempts to match the non-terminal for label. If matched, the label
@@ -205,8 +198,8 @@ char *cfg_strdup(char *source) {
  * function report_cfg
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 void label_cfg() {
-    if(cfg_assembler->lookahead == TOK_IDENTIFIER) {    
-        char *id = cfg_strdup(cfg_assembler->tokenizer->lexbuf);
+    if(cfg_assembler->lookahead == TOK_IDENTIFIER) {
+        char *id = strdup(cfg_assembler->tokenizer->lexbuf);
 
         match_cfg(TOK_IDENTIFIER);
         
@@ -263,7 +256,7 @@ struct operand_node *operand_cfg() {
             break;
         }
         case TOK_IDENTIFIER: {
-            char *id = cfg_strdup(cfg_assembler->tokenizer->lexbuf);
+            char *id = strdup(cfg_assembler->tokenizer->lexbuf);
             match_cfg(TOK_IDENTIFIER);
             
             node = (struct operand_node *)malloc(sizeof(struct operand_node));
@@ -274,7 +267,7 @@ struct operand_node *operand_cfg() {
             break;
         }
         case TOK_STRING: {
-            char *id = cfg_strdup(cfg_assembler->tokenizer->lexbuf);
+            char *id = strdup(cfg_assembler->tokenizer->lexbuf);
             match_cfg(TOK_STRING);
             
             node = (struct operand_node *)malloc(sizeof(struct operand_node));

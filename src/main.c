@@ -164,7 +164,7 @@ int main(int argc, char *argv[]) {
     astatus_t status = execute_assembler(assembler, input_array, input_count);
 
 #ifdef _WIN32
-    free(input_array);   /* T'm annoyed that I have to do this but oh well, nothing to do right now. */
+    free(input_array);   /* I'm annoyed that I have to do this but oh well, nothing to do right now. */
 #endif
 
     if(status != ASSEMBLER_STATUS_OK) {
