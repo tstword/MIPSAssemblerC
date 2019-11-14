@@ -43,9 +43,9 @@
 
 /* Type definitions */
 typedef uint32_t offset_t;
-typedef uint32_t segment_t;
-typedef uint16_t datasize_t;
-typedef uint8_t  symstat_t; 
+typedef uint8_t segment_t;
+typedef uint8_t datasize_t;
+typedef uint8_t symstat_t; 
 
 extern const char *segment_string[MAX_SEGMENTS];
 
