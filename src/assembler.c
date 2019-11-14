@@ -199,7 +199,7 @@ void end_line_cfg() {
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 void label_cfg() {
     if(cfg_assembler->lookahead == TOK_IDENTIFIER) {
-        char *id = (char *)malloc(sizeof(char) * strlen(cfg_assembler->tokenizer->lexbuf));
+        char *id = (char *)malloc(sizeof(char) * (strlen(cfg_assembler->tokenizer->lexbuf) + 1));
         strcpy(id, cfg_assembler->tokenizer->lexbuf);
         
         match_cfg(TOK_IDENTIFIER);
@@ -257,7 +257,7 @@ struct operand_node *operand_cfg() {
             break;
         }
         case TOK_IDENTIFIER: {
-            char *id = (char *)malloc(sizeof(char) * strlen(cfg_assembler->tokenizer->lexbuf));
+            char *id = (char *)malloc(sizeof(char) * (strlen(cfg_assembler->tokenizer->lexbuf) + 1));
             strcpy(id, cfg_assembler->tokenizer->lexbuf);
             
             match_cfg(TOK_IDENTIFIER);
@@ -270,7 +270,7 @@ struct operand_node *operand_cfg() {
             break;
         }
         case TOK_STRING: {
-            char *id = (char *)malloc(sizeof(char) * strlen(cfg_assembler->tokenizer->lexbuf));
+            char *id = (char *)malloc(sizeof(char) * (strlen(cfg_assembler->tokenizer->lexbuf) + 1));
             strcpy(id, cfg_assembler->tokenizer->lexbuf);
             
             match_cfg(TOK_STRING);
