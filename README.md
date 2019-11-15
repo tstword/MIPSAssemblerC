@@ -6,28 +6,48 @@ What was the motive, you may ask: The MARS simulator is wonderful IDE however, i
 
 ## Getting Started
 
-Clone the project into a directory
+Install git and clone the project into a directory
+
 ```
 git clone https://github.com/tstword/NewMIPSAssembler MIPSAssembler
 ```
 
 ### Prerequisites
 
-C Compiler (Devloped and Tested using GCC 5.4)
-GNU Make Utility
+C / C++ Compiler (Developed and Tested using GCC 5.4 and Clang)
+GNU Make Utility (Linux / MacOS)
+Visual Studio (Windows)
 
+## Ubuntu
 ```
-sudo apt-get install -y gcc make
+sudo apt-get install gcc make
 ```
 
-### Installing
+## MacOS
+```
+xcode-select --install
+```
 
+## Windows
+Since GCC isn't supported on Windows, we will default to using a C++ compiler.
+The MSVC compiler is currently not supported (for language constructs reasons) however the project can be compiled with Clang and Visual Studio.
+For information on setting up Clang on Windows, see: https://llvm.org/docs/GettingStartedVS.html
+
+### Compilation
+
+## Linux / Mac OS
 Change into the directory containing the source code
 ```
 cd MIPSAssembler
 ```
-
 Compile using the Make Utility
 ```
 make
 ```
+
+## Windows
+1. Open Visual Studio and create an Empty Project (C++)
+2. Import the source files into the 'Source Files' folder in the project
+3. Change project properties to add the include path containing the header files
+4. Change the platform toolset to LLVM (clang)
+5. Build project for target platform (x86/x64)
