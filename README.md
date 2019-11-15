@@ -12,30 +12,30 @@ Install git and clone the project into a directory
 git clone https://github.com/tstword/NewMIPSAssembler MIPSAssembler
 ```
 
-### Prerequisites
+## Prerequisites
 
 C / C++ Compiler (Developed and Tested using GCC 5.4 and Clang)
 GNU Make Utility (Linux / MacOS)
 Visual Studio (Windows)
 
-## Ubuntu
+# Ubuntu
 ```
 sudo apt-get install gcc make
 ```
 
-## MacOS
+# MacOS
 ```
 xcode-select --install
 ```
 
-## Windows
+# Windows
 Since GCC isn't supported on Windows, we will default to using a C++ compiler.
 The MSVC compiler is currently not supported (for language constructs reasons) however the project can be compiled with Clang and Visual Studio.
 For information on setting up Clang on Windows, see: https://llvm.org/docs/GettingStartedVS.html
 
-### Compilation
+## Compilation
 
-## Linux / Mac OS
+# Linux / Mac OS
 Change into the directory containing the source code
 ```
 cd MIPSAssembler
@@ -45,7 +45,7 @@ Compile using the Make Utility
 make
 ```
 
-## Windows
+# Windows
 1. Open Visual Studio and create an Empty Project (C++)
 2. Import the source files into the 'Source Files' folder in the project
 3. Change project properties to add the include path containing the header files
