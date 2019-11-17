@@ -293,8 +293,22 @@ state_fsm init_fsm(struct tokenizer *tokenizer) {
             tokenizer->lineno++;
             tokenizer->colno = 1;
             return eol_accept;
-        case 'A' ... 'Z':
-        case 'a' ... 'z':
+        /* To comply with Microsoft's C++ compiler... */
+        case 'A': case 'B': case 'C': case 'D':
+        case 'E': case 'F': case 'G': case 'H':
+        case 'I': case 'J': case 'K': case 'L':
+        case 'M': case 'N': case 'O': case 'P':
+        case 'Q': case 'R': case 'S': case 'T':
+        case 'U': case 'V': case 'W': case 'X':
+        case 'Y': case 'Z':
+        /* To comply with Microsoft's C++ compiler... */
+        case 'a': case 'b': case 'c': case 'd':
+        case 'e': case 'f': case 'g': case 'h':
+        case 'i': case 'j': case 'k': case 'l':
+        case 'm': case 'n': case 'o': case 'p':
+        case 'q': case 'r': case 's': case 't':
+        case 'u': case 'v': case 'w': case 'x':
+        case 'y': case 'z':
         case '$':
         case '_':
         case '.':
@@ -307,7 +321,10 @@ state_fsm init_fsm(struct tokenizer *tokenizer) {
             return comment_state;
         case '-':
             return negative_state;
-        case '1' ... '9':
+        /* To comply with Microsoft's C++ compiler... */
+        case '1': case '2': case '3':
+        case '4': case '5': case '6': case '7':
+        case '8': case '9':
             return integer_state;
         case '0':
             return zero_state;
@@ -338,10 +355,27 @@ state_fsm identifier_fsm(struct tokenizer *tokenizer) {
     int ch = tgetc(tokenizer);
 
     switch(ch) {
-        case 'A' ... 'Z':
-        case 'a' ... 'z':
+        /* To comply with Microsoft's C++ compiler... */
+        case 'A': case 'B': case 'C': case 'D':
+        case 'E': case 'F': case 'G': case 'H':
+        case 'I': case 'J': case 'K': case 'L':
+        case 'M': case 'N': case 'O': case 'P':
+        case 'Q': case 'R': case 'S': case 'T':
+        case 'U': case 'V': case 'W': case 'X':
+        case 'Y': case 'Z':
+        /* To comply with Microsoft's C++ compiler... */
+        case 'a': case 'b': case 'c': case 'd':
+        case 'e': case 'f': case 'g': case 'h':
+        case 'i': case 'j': case 'k': case 'l':
+        case 'm': case 'n': case 'o': case 'p':
+        case 'q': case 'r': case 's': case 't':
+        case 'u': case 'v': case 'w': case 'x':
+        case 'y': case 'z':
         case '_':
-        case '0' ... '9':
+        /* To comply with Microsoft's C++ compiler... */
+        case '0': case '1': case '2': case '3':
+        case '4': case '5': case '6': case '7':
+        case '8': case '9':
             return identifier_state;
         
         default:
@@ -362,7 +396,10 @@ state_fsm integer_fsm(struct tokenizer *tokenizer) {
     int ch = tgetc(tokenizer);
 
     switch(ch) {
-        case '0' ... '9':
+        /* To comply with Microsoft's C++ compiler... */
+        case '0': case '1': case '2': case '3':
+        case '4': case '5': case '6': case '7':
+        case '8': case '9':
             return integer_state;
 
         default:
@@ -390,7 +427,10 @@ state_fsm zero_fsm(struct tokenizer *tokenizer) {
             tungetc(ch, tokenizer);
             return integer_accept;
 
-        case '0' ... '9':
+        /* To comply with Microsoft's C++ compiler... */
+        case '0': case '1': case '2': case '3':
+        case '4': case '5': case '6': case '7':
+        case '8': case '9':
             return integer_state;
 
         default:
@@ -411,9 +451,16 @@ state_fsm hex_fsm(struct tokenizer *tokenizer) {
     int ch = tgetc(tokenizer);
 
     switch(ch) {
-        case 'A' ... 'F':
-        case 'a' ... 'f':
-        case '0' ... '9':
+        /* To comply with Microsoft's C++ compiler... */
+        case 'A': case 'B': case 'C': case 'D':
+        case 'E': case 'F':
+        /* To comply with Microsoft's C++ compiler... */
+        case 'a': case 'b': case 'c': case 'd':
+        case 'e': case 'f':
+        /* To comply with Microsoft's C++ compiler... */
+        case '0': case '1': case '2': case '3':
+        case '4': case '5': case '6': case '7':
+        case '8': case '9':
             return hex_state;
         default:
             tungetc(ch, tokenizer);
@@ -459,7 +506,10 @@ state_fsm negative_fsm(struct tokenizer *tokenizer) {
     switch(ch) {
         case '0':
             return zero_state;
-        case '1' ... '9':
+        /* To comply with Microsoft's C++ compiler... */
+        case '1': case '2': case '3':
+        case '4': case '5': case '6': case '7':
+        case '8': case '9':
             return integer_state;
         default:
             tungetc(ch, tokenizer);
