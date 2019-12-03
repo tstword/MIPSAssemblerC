@@ -59,12 +59,12 @@
 struct assembler *cfg_assembler = NULL;
 
 /* Base and limits for segments */
-const offset_t segment_offset_base[MAX_SEGMENTS]  = { 
+const offset_t SEGMENT_OFFSET_BASE[MAX_SEGMENTS]  = { 
     [SEGMENT_TEXT]  = 0x00400000, [SEGMENT_DATA]  = 0x10000000, 
     [SEGMENT_KTEXT] = 0x80000000, [SEGMENT_KDATA] = 0x90000000 
 };
 
-const offset_t segment_offset_limit[MAX_SEGMENTS] = { 
+const offset_t SEGMENT_OFFSET_LIMIT[MAX_SEGMENTS] = { 
     [SEGMENT_TEXT]  = 0x0FFFFFFF, [SEGMENT_DATA]  = 0x1000FFFF,
     [SEGMENT_KTEXT] = 0x8FFFFFFF, [SEGMENT_KDATA] = 0xFFFEFFFF
 };
@@ -108,12 +108,12 @@ void report_cfg(const char *fmt, ...) {
     free(buffer);
 }
 
-void inc_segment_offset(offset_t offset) {
+void incr_segment_offset(offset_t offset) {
     offset_t next_offset = cfg_assembler->segment_offset[cfg_assembler->segment] + offset;
-    if(next_offset > segment_offset_limit[cfg_assembler->segment]) {
+    if(next_offset > SEGMENT_OFFSET_LIMIT[cfg_assembler->segment]) {
         fprintf(stderr, "Memory Error: Segment '%s' exceeded limit. Base: 0x%08X, Offset: 0x%08X, Limit: 0x%08X\n", 
-                segment_string[cfg_assembler->segment], segment_offset_base[cfg_assembler->segment], 
-                next_offset, segment_offset_limit[cfg_assembler->segment]);
+                segment_string[cfg_assembler->segment], SEGMENT_OFFSET_BASE[cfg_assembler->segment], 
+                next_offset, SEGMENT_OFFSET_LIMIT[cfg_assembler->segment]);
         cfg_assembler->status = ASSEMBLER_STATUS_FAIL;
     }
     cfg_assembler->segment_offset[cfg_assembler->segment] += offset;
@@ -133,7 +133,7 @@ void align_segment_offset(uint32_t n) {
 
 void write_segment_memory(void *buf, size_t size) {
     segment_t segment = cfg_assembler->segment;
-    offset_t buf_offset = cfg_assembler->segment_offset[segment] - segment_offset_base[segment];
+    offset_t buf_offset = cfg_assembler->segment_offset[segment] - SEGMENT_OFFSET_BASE[segment];
     offset_t next_offset = buf_offset + size;
     if(next_offset > cfg_assembler->segment_memory_size[segment]) {
         size_t mem_offset = cfg_assembler->segment_memory_size[segment];
@@ -150,6 +150,11 @@ void write_segment_memory(void *buf, size_t size) {
     if(next_offset > cfg_assembler->segment_memory_offset[segment]) {
         cfg_assembler->segment_memory_offset[segment] = next_offset;
     }
+}
+
+void write_instruction(instruction_t instruction) {
+    write_segment_memory((void *)&instruction, 0x4);
+    incr_segment_offset(0x4);
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -435,18 +440,15 @@ int verify_operand_list(struct reserved_entry *res_entry, struct operand_node *o
 }
 
 int assemble_psuedo_instruction(struct instruction_node *instr) {
-    instruction_t instruction[MAX_INSTRUCTIONS];
-
     struct opcode_entry *entry = (struct opcode_entry *)instr->mnemonic->attrptr;
-    uint32_t instr_size = entry->size;
-
+    
     int assemble_status = 1; /* Assume instruction is assembled */
 
     switch(entry->opcode) {
         case 0x00: {
             struct operand_node *rd = instr->operand_list;
             struct operand_node *rs = instr->operand_list->next;
-            instruction[0] = CREATE_INSTRUCTION_R(0, 0, rs->value.reg, rd->value.reg, 0, 0x21);
+            write_instruction(CREATE_INSTRUCTION_R(0, 0, rs->value.reg, rd->value.reg, 0, 0x21));
             break;
         }
         case 0x01: {
@@ -455,12 +457,11 @@ int assemble_psuedo_instruction(struct instruction_node *instr) {
             uint32_t immediate = imm->value.integer;
             if(((immediate >> 16) & 0xFFFF) != 0xFFFF && ((immediate >> 16) & 0xFFFF) != 0x0000) {
                 /* 32-bit sign extended or unsigned value */
-                instruction[0] = CREATE_INSTRUCTION_I(0x0F, 0, 1, (immediate >> 16));
-                instruction[1] = CREATE_INSTRUCTION_I(0x0D, 1, rd->value.reg, immediate);
+                write_instruction(CREATE_INSTRUCTION_I(0x0F, 0, 1, (immediate >> 16)));
+                write_instruction(CREATE_INSTRUCTION_I(0x0D, 1, rd->value.reg, immediate));
             }
             else {
-                instruction[0] = CREATE_INSTRUCTION_I(0x09, 0, rd->value.reg, immediate);
-                instr_size = 4;
+                write_instruction(CREATE_INSTRUCTION_I(0x09, 0, rd->value.reg, immediate));
             }
             break;
         }
@@ -474,15 +475,15 @@ int assemble_psuedo_instruction(struct instruction_node *instr) {
                 assemble_status = 0;
             }
             else {
-                instruction[0] = CREATE_INSTRUCTION_I(0x0F, 0, 1, (sym_entry->offset >> 16));
-                instruction[1] = CREATE_INSTRUCTION_I(0x0D, 1, rd->value.reg, sym_entry->offset);
+                write_instruction(CREATE_INSTRUCTION_I(0x0F, 0, 1, (sym_entry->offset >> 16)));
+                write_instruction(CREATE_INSTRUCTION_I(0x0D, 1, rd->value.reg, sym_entry->offset));
             }   
             break;
         }
         case 0x03: {
             struct operand_node *rd = instr->operand_list;
             struct operand_node *rs = instr->operand_list->next;
-            instruction[0] = CREATE_INSTRUCTION_R(0, rs->value.reg, 0, rd->value.reg, 0, 0x27);
+            write_instruction(CREATE_INSTRUCTION_R(0, rs->value.reg, 0, rd->value.reg, 0, 0x27));
             break; 
         }
         case 0x04: {
@@ -496,7 +497,7 @@ int assemble_psuedo_instruction(struct instruction_node *instr) {
             }
             else {
                 offset_t branch_offset = (sym_entry->offset - (cfg_assembler->segment_offset[cfg_assembler->segment] + 4)) >> 2;
-                instruction[0] = CREATE_INSTRUCTION_I(0x04, rs->value.reg, 0, branch_offset);
+                write_instruction(CREATE_INSTRUCTION_I(0x04, rs->value.reg, 0, branch_offset));
             }   
             break;
         }
@@ -511,9 +512,9 @@ int assemble_psuedo_instruction(struct instruction_node *instr) {
                 assemble_status = 0;
             }
             else {
-                instruction[0] = CREATE_INSTRUCTION_R(0, rs->value.reg, rt->value.reg, 1, 0, 0x2A);
-                offset_t branch_offset = (sym_entry->offset - (cfg_assembler->segment_offset[cfg_assembler->segment] + 8)) >> 2;
-                instruction[1] = CREATE_INSTRUCTION_I(0x04, 1, 0, branch_offset); 
+                write_instruction(CREATE_INSTRUCTION_R(0, rs->value.reg, rt->value.reg, 1, 0, 0x2A));
+                offset_t branch_offset = (sym_entry->offset - (cfg_assembler->segment_offset[cfg_assembler->segment] + 4)) >> 2;
+                write_instruction(CREATE_INSTRUCTION_I(0x04, 1, 0, branch_offset)); 
             }
             break;
         }
@@ -528,9 +529,9 @@ int assemble_psuedo_instruction(struct instruction_node *instr) {
                 assemble_status = 0;
             }
             else {
-                instruction[0] = CREATE_INSTRUCTION_R(0, rt->value.reg, rs->value.reg, 1, 0, 0x2A);
-                offset_t branch_offset = (sym_entry->offset - (cfg_assembler->segment_offset[cfg_assembler->segment] + 8)) >> 2;
-                instruction[1] = CREATE_INSTRUCTION_I(0x04, 1, 0, branch_offset);
+                write_instruction(CREATE_INSTRUCTION_R(0, rt->value.reg, rs->value.reg, 1, 0, 0x2A));
+                offset_t branch_offset = (sym_entry->offset - (cfg_assembler->segment_offset[cfg_assembler->segment] + 4)) >> 2;
+                write_instruction(CREATE_INSTRUCTION_I(0x04, 1, 0, branch_offset));
             }
             break;
         }
@@ -545,7 +546,7 @@ int assemble_psuedo_instruction(struct instruction_node *instr) {
             }
             else {
                 offset_t branch_offset = (sym_entry->offset - (cfg_assembler->segment_offset[cfg_assembler->segment] + 4)) >> 2;
-                instruction[0] = CREATE_INSTRUCTION_I(0x05, rs->value.reg, 0, branch_offset);  
+                write_instruction(CREATE_INSTRUCTION_I(0x05, rs->value.reg, 0, branch_offset));  
             }
             break;
         }
@@ -560,9 +561,9 @@ int assemble_psuedo_instruction(struct instruction_node *instr) {
                 assemble_status = 0;
             }
             else {
-                instruction[0] = CREATE_INSTRUCTION_R(0, rs->value.reg, rt->value.reg, 1, 0, 0x2A);
-                offset_t branch_offset = (sym_entry->offset - (cfg_assembler->segment_offset[cfg_assembler->segment] + 8)) >> 2;
-                instruction[1] = CREATE_INSTRUCTION_I(0x05, 1, 0, branch_offset);
+                write_instruction(CREATE_INSTRUCTION_R(0, rs->value.reg, rt->value.reg, 1, 0, 0x2A));
+                offset_t branch_offset = (sym_entry->offset - (cfg_assembler->segment_offset[cfg_assembler->segment] + 4)) >> 2;
+                write_instruction(CREATE_INSTRUCTION_I(0x05, 1, 0, branch_offset));
             }
             break;
         }
@@ -577,23 +578,89 @@ int assemble_psuedo_instruction(struct instruction_node *instr) {
                 assemble_status = 0;
             }
             else {
-                instruction[0] = CREATE_INSTRUCTION_R(0, rt->value.reg, rs->value.reg, 1, 0, 0x2A);
-                offset_t branch_offset = (sym_entry->offset - (cfg_assembler->segment_offset[cfg_assembler->segment] + 8)) >> 2;
-                instruction[1] = CREATE_INSTRUCTION_I(0x05, 1, 0, branch_offset); 
+                write_instruction(CREATE_INSTRUCTION_R(0, rt->value.reg, rs->value.reg, 1, 0, 0x2A));
+                offset_t branch_offset = (sym_entry->offset - (cfg_assembler->segment_offset[cfg_assembler->segment] + 4)) >> 2;
+                write_instruction(CREATE_INSTRUCTION_I(0x05, 1, 0, branch_offset)); 
             }
+            break;
+        }
+        case 0x0A: {
+            struct operand_node *rd = instr->operand_list;
+            struct operand_node *rs = instr->operand_list->next;
+            struct operand_node *rt = instr->operand_list->next->next;
+            write_instruction(CREATE_INSTRUCTION_R(0, rs->value.reg, rt->value.reg, 0, 0, 0x18));
+            write_instruction(CREATE_INSTRUCTION_R(0, 0, 0, rd->value.reg, 0, 0x12));
+            break;
+        }
+        case 0x0B: {
+            struct operand_node *rd = instr->operand_list;
+            struct operand_node *rs = instr->operand_list->next;
+            write_instruction(CREATE_INSTRUCTION_R(0, 0, rs->value.reg, 1, 31, 0x03));
+            write_instruction(CREATE_INSTRUCTION_R(0, 1, rs->value.reg, rd->value.reg, 0, 0x26));
+            write_instruction(CREATE_INSTRUCTION_R(0, rd->value.reg, 1, rd->value.reg, 0, 0x23));
+            break;
+        }
+        case 0x0C: {
+            struct operand_node *rd = instr->operand_list;
+            struct operand_node *rs = instr->operand_list->next;
+            write_instruction(CREATE_INSTRUCTION_R(0, 0, rs->value.reg, rd->value.reg, 0, 0x22));
+            break;
+        }
+        case 0x0D: {
+            struct operand_node *rd = instr->operand_list;
+            struct operand_node *rs = instr->operand_list->next;
+            struct operand_node *imm = instr->operand_list->next->next;
+            write_instruction(CREATE_INSTRUCTION_R(0, 0, rs->value.reg, 1, 32 - imm->value.integer, 0x00));
+            write_instruction(CREATE_INSTRUCTION_R(0, 0, rs->value.reg, rd->value.reg, imm->value.integer, 0x02));
+            write_instruction(CREATE_INSTRUCTION_R(0, rd->value.reg, 1, rd->value.reg, 0, 0x25));
+            break;
+        }
+        case 0x0E: {
+            struct operand_node *rd = instr->operand_list;
+            struct operand_node *rs = instr->operand_list->next;
+            struct operand_node *imm = instr->operand_list->next->next;
+            write_instruction(CREATE_INSTRUCTION_R(0, 0, rs->value.reg, 1, 32 - imm->value.integer, 0x02));
+            write_instruction(CREATE_INSTRUCTION_R(0, 0, rs->value.reg, rd->value.reg, imm->value.integer, 0x00));
+            write_instruction(CREATE_INSTRUCTION_R(0, rd->value.reg, 1, rd->value.reg, 0, 0x25));
+            break;
+        }
+        case 0x0F: {
+            struct operand_node *rd = instr->operand_list;
+            struct operand_node *rs = instr->operand_list->next;
+            struct operand_node *rt = instr->operand_list->next->next;
+            write_instruction(CREATE_INSTRUCTION_R(0, rt->value.reg, rs->value.reg, rd->value.reg, 0, 0x2A));
+            break;
+        }
+        case 0x10: {
+            struct operand_node *label = instr->operand_list;
+            /* Check if label has been defined */
+            struct symbol_table_entry *sym_entry = get_symbol_table(cfg_assembler->symbol_table, label->identifier);
+            if(sym_entry->status == SYMBOL_UNDEFINED) {
+                insert_front(sym_entry->instr_list, (void *)instr);
+                assemble_status = 0;
+            }
+            else {
+                offset_t branch_offset = (sym_entry->offset - (cfg_assembler->segment_offset[cfg_assembler->segment] + 4)) >> 2;
+                write_instruction(CREATE_INSTRUCTION_I(0x01, 0, 0x01, branch_offset));
+            }
+            break;
+        }
+        case 0x11: {
+            struct operand_node *rd = instr->operand_list;
+            struct operand_node *rs = instr->operand_list->next;
+            struct operand_node *rt = instr->operand_list->next->next;
+            write_instruction(CREATE_INSTRUCTION_R(0, rs->value.reg, rt->value.reg, rd->value.reg, 0, 0x23));
+            write_instruction(CREATE_INSTRUCTION_R(0, 0, rd->value.reg, rd->value.reg, 0, 0x2B));
             break;
         }
     }
 
-    if(assemble_status) write_segment_memory((void *)instruction, instr_size);
-    inc_segment_offset(instr_size);
+    if(!assemble_status) incr_segment_offset(entry->size);
 
     return assemble_status;
 }
 
 int assemble_funct_instruction(struct instruction_node *instr) {
-    instruction_t instruction = 0;
-
     struct opcode_entry *entry = (struct opcode_entry *)instr->mnemonic->attrptr;
 
     switch(entry->funct) {
@@ -610,20 +677,20 @@ int assemble_funct_instruction(struct instruction_node *instr) {
             struct operand_node *rd = instr->operand_list;
             struct operand_node *rs = instr->operand_list->next;
             struct operand_node *rt = instr->operand_list->next->next;
-            instruction = CREATE_INSTRUCTION_R(0, rs->value.reg, rt->value.reg, rd->value.reg, 0, entry->funct);
+            write_instruction(CREATE_INSTRUCTION_R(0, rs->value.reg, rt->value.reg, rd->value.reg, 0, entry->funct));
             break; 
         }
 
         case 0x08: {
             struct operand_node *rs = instr->operand_list;
-            instruction = CREATE_INSTRUCTION_R(0, rs->value.reg, 0, 0, 0, entry->funct);
+            write_instruction(CREATE_INSTRUCTION_R(0, rs->value.reg, 0, 0, 0, entry->funct));
             break;
         }
 
         case 0x10:
         case 0x12: {
             struct operand_node *rd = instr->operand_list;
-            instruction = CREATE_INSTRUCTION_R(0, 0, 0, rd->value.reg, 0, entry->funct);
+            write_instruction(CREATE_INSTRUCTION_R(0, 0, 0, rd->value.reg, 0, entry->funct));
             break;
         }
 
@@ -633,12 +700,12 @@ int assemble_funct_instruction(struct instruction_node *instr) {
             struct operand_node *rd = instr->operand_list;
             struct operand_node *rt = instr->operand_list->next;
             struct operand_node *shamt = instr->operand_list->next->next;
-            instruction = CREATE_INSTRUCTION_R(0, 0, rt->value.reg, rd->value.reg, shamt->value.integer, entry->funct);
+            write_instruction(CREATE_INSTRUCTION_R(0, 0, rt->value.reg, rd->value.reg, shamt->value.integer, entry->funct));
             break;
         }
 
         case 0x0C:
-            instruction = CREATE_INSTRUCTION_R(0, 0, 0, 0, 0, entry->funct);
+            write_instruction(CREATE_INSTRUCTION_R(0, 0, 0, 0, 0, entry->funct));
             break;
 
         case 0x1A:
@@ -647,22 +714,19 @@ int assemble_funct_instruction(struct instruction_node *instr) {
         case 0x19: {
             struct operand_node *rs = instr->operand_list;
             struct operand_node *rt = instr->operand_list->next;
-            instruction = CREATE_INSTRUCTION_R(0, rs->value.reg, rt->value.reg, 0, 0, entry->funct);
+            write_instruction(CREATE_INSTRUCTION_R(0, rs->value.reg, rt->value.reg, 0, 0, entry->funct));
             break;
         }
     }
 
     /* No branch instructions here, instructions will always be assembled */
-    write_segment_memory((void *)&instruction, 0x4);
-    inc_segment_offset(0x4);
 
     return 1;
 }
 
 int assemble_opcode_instruction(struct instruction_node *instr) {
-    instruction_t instruction = 0;
-
     struct opcode_entry *entry = (struct opcode_entry *)instr->mnemonic->attrptr;
+    
     int assemble_status = 1; /* Assume instruction is assembled */
 
     switch(entry->opcode) {
@@ -676,7 +740,7 @@ int assemble_opcode_instruction(struct instruction_node *instr) {
             struct operand_node *rt = instr->operand_list;
             struct operand_node *rs = instr->operand_list->next;
             struct operand_node *imm = instr->operand_list->next->next;
-            instruction = CREATE_INSTRUCTION_I(entry->opcode, rs->value.reg, rt->value.reg, imm->value.integer);
+            write_instruction(CREATE_INSTRUCTION_I(entry->opcode, rs->value.reg, rt->value.reg, imm->value.integer));
             break;
         }
 
@@ -684,7 +748,7 @@ int assemble_opcode_instruction(struct instruction_node *instr) {
             struct operand_node *rd = instr->operand_list;
             struct operand_node *imm = instr->operand_list->next;
             uint32_t immediate = imm->value.integer;
-            instruction = CREATE_INSTRUCTION_I(entry->opcode, 0, rd->value.reg, immediate);
+            write_instruction(CREATE_INSTRUCTION_I(entry->opcode, 0, rd->value.reg, immediate));
             break;
         }
 
@@ -701,7 +765,7 @@ int assemble_opcode_instruction(struct instruction_node *instr) {
             }
             else {
                 offset_t branch_offset = (sym_entry->offset - (cfg_assembler->segment_offset[cfg_assembler->segment] + 4)) >> 2;
-                instruction = CREATE_INSTRUCTION_I(entry->opcode, rs->value.reg, entry->rt, branch_offset);
+                write_instruction(CREATE_INSTRUCTION_I(entry->opcode, rs->value.reg, entry->rt, branch_offset));
             }   
             break;
         }
@@ -719,7 +783,7 @@ int assemble_opcode_instruction(struct instruction_node *instr) {
             }
             else {
                 offset_t branch_offset = (sym_entry->offset - (cfg_assembler->segment_offset[cfg_assembler->segment] + 4)) >> 2;
-                instruction = CREATE_INSTRUCTION_I(entry->opcode, rs->value.reg, rt->value.reg, branch_offset);
+                write_instruction(CREATE_INSTRUCTION_I(entry->opcode, rs->value.reg, rt->value.reg, branch_offset));
             }
             break;
         }
@@ -734,7 +798,7 @@ int assemble_opcode_instruction(struct instruction_node *instr) {
                 assemble_status = 0;
             }
             else {
-                instruction = CREATE_INSTRUCTION_J(entry->opcode, (sym_entry->offset >> 2));   
+                write_instruction(CREATE_INSTRUCTION_J(entry->opcode, (sym_entry->offset >> 2)));   
             }
             break;
         }
@@ -750,13 +814,26 @@ int assemble_opcode_instruction(struct instruction_node *instr) {
         case 0x2B: {
             struct operand_node *rt = instr->operand_list;
             struct operand_node *addr = instr->operand_list->next;
-            instruction = CREATE_INSTRUCTION_I(entry->opcode, addr->value.reg, rt->value.reg, addr->value.integer);
+            if(addr->operand == OPERAND_LABEL) {
+                struct symbol_table_entry *sym_entry = get_symbol_table(cfg_assembler->symbol_table, addr->identifier);
+                if(sym_entry->status == SYMBOL_UNDEFINED) {
+                    insert_front(sym_entry->instr_list, (void *)instr);
+                    incr_segment_offset(0x4); /* Special Case: Psuedo instruction requires 8 bytes */
+                    assemble_status = 0;
+                }
+                else {
+                    write_instruction(CREATE_INSTRUCTION_I(0x0F, 0, 1, (sym_entry->offset >> 16)));
+                    write_instruction(CREATE_INSTRUCTION_I(entry->opcode, 1, rt->value.reg, sym_entry->offset));
+                }
+            } 
+            else {
+                write_instruction(CREATE_INSTRUCTION_I(entry->opcode, addr->value.reg, rt->value.reg, addr->value.integer));
+            }
             break;
         }
     }
 
-    if(assemble_status) write_segment_memory((void *)&instruction, 0x4);
-    inc_segment_offset(0x4);
+    if(!assemble_status) incr_segment_offset(0x4);
 
     return assemble_status;
 }
@@ -904,19 +981,22 @@ int check_directive(struct instruction_node *instr) {
                     /* Check if label has been defined */
                     struct symbol_table_entry *sym_entry = get_symbol_table(cfg_assembler->symbol_table, current_operand->identifier);
                     if(sym_entry->status == SYMBOL_UNDEFINED) {
-                        insert_front(sym_entry->instr_list, (void *)instr);
+                        /* Special case, this directive can take multiple undefined labels
+                         * We must ensure that this instruction is appended only once */
+                        if(assemble_status) insert_front(sym_entry->instr_list, (void *)instr);
+                        incr_segment_offset(0x4);
                         assemble_status = 0;
                     }
                     else {
                         offset_t sym_offset = sym_entry->offset;
                         write_segment_memory((void *)&sym_offset, 0x4);
-                        inc_segment_offset(0x4);   
+                        incr_segment_offset(0x4);
                     }
                 }
                 else {
                     int value = current_operand->value.integer;
                     write_segment_memory((void *)&value, 0x4);
-                    inc_segment_offset(0x4);
+                    incr_segment_offset(0x4);
                 }
                 current_operand = current_operand->next;
             }
@@ -927,7 +1007,7 @@ int check_directive(struct instruction_node *instr) {
             while(current_operand != NULL) {
                 int value = current_operand->value.integer;
                 write_segment_memory((void *)&value, 0x2);
-                inc_segment_offset(0x2);
+                incr_segment_offset(0x2);
                 current_operand = current_operand->next;
             }
             break;
@@ -937,7 +1017,7 @@ int check_directive(struct instruction_node *instr) {
             while(current_operand != NULL) {
                 int value = current_operand->value.integer;
                 write_segment_memory((void *)&value, 0x1);
-                inc_segment_offset(0x1);
+                incr_segment_offset(0x1);
                 current_operand = current_operand->next;
             }
             break;
@@ -945,13 +1025,17 @@ int check_directive(struct instruction_node *instr) {
         case DIRECTIVE_ASCII: {
             offset_t length = strlen(operand_list->identifier);
             write_segment_memory((void *)operand_list->identifier, length);
-            inc_segment_offset(length);
+            incr_segment_offset(length);
             break;
         }
         case DIRECTIVE_ASCIIZ: {
             offset_t length = strlen(operand_list->identifier) + 1;
             write_segment_memory((void *)operand_list->identifier, length);
-            inc_segment_offset(length);
+            incr_segment_offset(length);
+            break;
+        }
+        case DIRECTIVE_SPACE: {
+            incr_segment_offset(operand_list->value.integer);
             break;
         }
     }
@@ -1145,7 +1229,7 @@ struct assembler *create_assembler() {
     assembler->segment = SEGMENT_TEXT;
     
     for(segment_t segment = 0; segment < MAX_SEGMENTS; ++segment) {
-        assembler->segment_offset[segment] = segment_offset_base[segment];
+        assembler->segment_offset[segment] = SEGMENT_OFFSET_BASE[segment];
         assembler->segment_memory[segment] = NULL;
         assembler->segment_memory_offset[segment] = 0;
         assembler->segment_memory_size[segment] = 0;
@@ -1201,7 +1285,7 @@ astatus_t execute_assembler(struct assembler *assembler, const char **files, siz
 
     /* Setup segment / memory offsets */
     for(segment_t segment = 0; segment < MAX_SEGMENTS; ++segment) {
-        assembler->segment_offset[segment] = segment_offset_base[segment];
+        assembler->segment_offset[segment] = SEGMENT_OFFSET_BASE[segment];
         assembler->segment_memory_offset[segment] = 0;
     }
 
@@ -1217,7 +1301,7 @@ astatus_t execute_assembler(struct assembler *assembler, const char **files, siz
             if(assembler->segment_memory_offset[segment] == 0) continue;
             printf("[ * Memory Segment %-4s * ]", segment_string[segment]);
             for(int i = 0; i < assembler->segment_memory_offset[segment]; i++) {
-                if((i & (0x3)) == 0) printf("\n0x%08X  ", segment_offset_base[segment] + i);
+                if((i & (0x3)) == 0) printf("\n0x%08X  ", SEGMENT_OFFSET_BASE[segment] + i);
                 unsigned char c = *((unsigned char *)assembler->segment_memory[segment] + i);
                 printf("\\%02X ", c);
             }
