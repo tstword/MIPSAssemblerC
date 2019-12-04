@@ -38,7 +38,7 @@ typedef enum { init_state, comma_accept, colon_accept, left_paren_accept,
                integer_state, integer_accept, hex_state, zero_state,
                character_state, character_accept, eof_accept, comment_state, 
                comment_accept, negative_state, string_state, string_accept, 
-               eol_accept, invalid_state } state_fsm;
+               quote_state, escape_state, eol_accept, invalid_state } state_fsm;
 
 /* Reserved keyword table */
 struct reserved_entry reserved_table[] = {
@@ -330,6 +330,8 @@ state_fsm init_fsm(struct tokenizer *tokenizer) {
             /* Ignore " character */
             tokenizer->bufpos--;
             return string_state;
+        case '\'':
+            return character_state;
         case '#':
             return comment_state;
         case '-':
@@ -559,6 +561,62 @@ state_fsm string_fsm(struct tokenizer *tokenizer) {
     return invalid_state;
 }
 
+state_fsm character_fsm(struct tokenizer *tokenizer) {
+    int ch = tgetc(tokenizer);
+
+    switch(ch) {
+        case 'A' ... 'Z':
+        case 'a' ... 'z':
+        case '0' ... '9':
+            return quote_state;
+        case '\\':
+            return escape_state;
+        default:
+            tungetc(ch, tokenizer);
+            report_fsm(tokenizer, "Expected C-style character on line %ld, col %ld", tokenizer->lineno, tokenizer->colno);
+            return invalid_state;
+    }
+
+    return invalid_state;
+}
+
+state_fsm escape_fsm(struct tokenizer *tokenizer) {
+    int ch = tgetc(tokenizer);
+
+    switch(ch) { 
+        case 't':
+        case 'b':
+        case 'n':
+        case 'r':
+        case '0':
+        case 'a':
+        case 'f':
+        case '\\':
+            return quote_state;
+        default:
+            tungetc(ch, tokenizer);
+            report_fsm(tokenizer, "Unrecognized escape character on line %ld, col %ld", tokenizer->lineno, tokenizer->colno);
+            return invalid_state;
+    }
+
+    return invalid_state;
+}
+
+state_fsm quote_fsm(struct tokenizer *tokenizer) {
+    int ch = tgetc(tokenizer);
+
+    switch(ch) {
+        case '\'':
+            return character_accept;
+        default:
+            tungetc(ch, tokenizer);
+            report_fsm(tokenizer, "Expected end single quote on line %ld, col %ld", tokenizer->lineno, tokenizer->colno);
+            return invalid_state;
+    }
+
+    return invalid_state;
+}
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Function: return_token
  * Purpose: Serves as a final step before returning the token. If the token is
@@ -598,21 +656,58 @@ token_t return_token(token_t token, struct tokenizer *tokenizer) {
             tokenizer->attrbuf = tokenizer->lexbuf;
             return token;
         case TOK_INTEGER: {
-            long long value;
-            
-            if(*tokenizer->lexbuf == '-') {
-                tokenizer->attrval = value = strtoll(tokenizer->lexbuf + 1, NULL, 0);
-                tokenizer->attrval *= -1;
-                if(value > 2147483648) {
-                    report_fsm(tokenizer, "Integer literal '%s' cannot be represented with 32-bits on line %ld", tokenizer->lexbuf, tokenizer->lineno);
-                    return TOK_INVALID;
+            if(*tokenizer->lexbuf == '\'') {
+                if(*(tokenizer->lexbuf + 1) == '\\') {
+                    switch(*(tokenizer->lexbuf + 2)) {
+                        case '\\':
+                            tokenizer->attrval = '\\';
+                            break;
+                        case 't':
+                            tokenizer->attrval = '\t';
+                            break;
+                        case 'n':
+                            tokenizer->attrval = '\n';
+                            break;
+                        case 'r':
+                            tokenizer->attrval = '\r';
+                            break;
+                        case 'b':
+                            tokenizer->attrval = '\b';
+                            break;
+                        case 'a':
+                            tokenizer->attrval = '\a';
+                            break;
+                        case '0':
+                            tokenizer->attrval = '\0';
+                            break;
+                        case 'f':
+                            tokenizer->attrval = '\f';
+                            break;
+                        default:
+                            report_fsm(tokenizer, "Unrecognized escape character %c", *(tokenizer->lexbuf + 2));
+                            return TOK_INVALID;
+                    }
+                }
+                else {
+                    tokenizer->attrval = *(tokenizer->lexbuf + 1);
                 }
             }
             else {
-                tokenizer->attrval = value = strtoll(tokenizer->lexbuf, NULL, 0);
-                if(value > 4294967295) {
-                    report_fsm(tokenizer, "Integer literal '%s' cannot be represented with 32-bits on line %ld", tokenizer->lexbuf, tokenizer->lineno);
-                    return TOK_INVALID;
+                long long value;
+                if(*tokenizer->lexbuf == '-') {
+                    tokenizer->attrval = value = strtoll(tokenizer->lexbuf + 1, NULL, 0);
+                    tokenizer->attrval *= -1;
+                    if(value > 2147483648) {
+                        report_fsm(tokenizer, "Integer literal '%s' cannot be represented with 32-bits on line %ld", tokenizer->lexbuf, tokenizer->lineno);
+                        return TOK_INVALID;
+                    }
+                }
+                else {
+                    tokenizer->attrval = value = strtoll(tokenizer->lexbuf, NULL, 0);
+                    if(value > 4294967295) {
+                        report_fsm(tokenizer, "Integer literal '%s' cannot be represented with 32-bits on line %ld", tokenizer->lexbuf, tokenizer->lineno);
+                        return TOK_INVALID;
+                    }
                 }
             }
             return token;
@@ -722,7 +817,17 @@ token_t get_next_token(struct tokenizer *tokenizer) {
             case comment_accept:
                 next_state = init_state;
                 break;
+            case character_state:
+                next_state = character_fsm(tokenizer);
+                break;
+            case escape_state:
+                next_state = escape_fsm(tokenizer);
+                break;
+            case quote_state:
+                next_state = quote_fsm(tokenizer);
+                break;
             case integer_accept:
+            case character_accept:
                 return return_token(TOK_INTEGER, tokenizer);
             case identifier_accept:
                 return return_token(TOK_IDENTIFIER, tokenizer);
