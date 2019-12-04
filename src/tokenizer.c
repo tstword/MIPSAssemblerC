@@ -651,6 +651,7 @@ token_t return_token(token_t token, struct tokenizer *tokenizer) {
                     tokenizer->attrval = entry->attrval;
                 return entry->token;
             }
+            /* Intentional fall-through here, if not a reserved identifier set attrbuf to lexical buf */
         case TOK_STRING:
             /* Set attribute to lexbuffer */
             tokenizer->attrbuf = tokenizer->lexbuf;
