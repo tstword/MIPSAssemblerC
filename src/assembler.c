@@ -157,6 +157,10 @@ void write_instruction(instruction_t instruction) {
     incr_segment_offset(0x4);
 }
 
+offset_t get_branch_offset(struct symbol_table_entry *entry) {
+    return (entry->offset - (cfg_assembler->segment_offset[cfg_assembler->segment] + 4)) >> 2;
+}
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Function: match_cfg
  * Purpose: Checks if the most recent token returned by the tokenizer matches
@@ -444,28 +448,32 @@ int assemble_psuedo_instruction(struct instruction_node *instr) {
     
     int assemble_status = 1; /* Assume instruction is assembled */
 
-    switch(entry->opcode) {
-        case 0x00: {
+    switch(entry - opcode_table) {
+        case MNEMONIC_MOVE: {
             struct operand_node *rd = instr->operand_list;
             struct operand_node *rs = instr->operand_list->next;
             write_instruction(CREATE_INSTRUCTION_R(0, 0, rs->value.reg, rd->value.reg, 0, 0x21));
             break;
         }
-        case 0x01: {
+        case MNEMONIC_LI: {
             struct operand_node *rd = instr->operand_list;
             struct operand_node *imm = instr->operand_list->next;
             uint32_t immediate = imm->value.integer;
-            if(((immediate >> 16) & 0xFFFF) != 0xFFFF && ((immediate >> 16) & 0xFFFF) != 0x0000) {
+            if(((immediate >> 15) & 0x1FFFF) != 0x1FFFF && ((immediate >> 16) & 0xFFFF) != 0x0000) {
                 /* 32-bit sign extended or unsigned value */
                 write_instruction(CREATE_INSTRUCTION_I(0x0F, 0, 1, (immediate >> 16)));
                 write_instruction(CREATE_INSTRUCTION_I(0x0D, 1, rd->value.reg, immediate));
+            }
+            else if(((immediate >> 16) & 0xFFFF) == 0x0000 && ((immediate >> 15) & 0x1)) {
+                /* Cannot sign-extend, must use ORI */
+                write_instruction(CREATE_INSTRUCTION_I(0x0D, 0, rd->value.reg, immediate));
             }
             else {
                 write_instruction(CREATE_INSTRUCTION_I(0x09, 0, rd->value.reg, immediate));
             }
             break;
         }
-        case 0x02: {
+        case MNEMONIC_LA: {
             struct operand_node *rd = instr->operand_list;
             struct operand_node *label = instr->operand_list->next;
             /* Check if label has been defined */
@@ -480,13 +488,13 @@ int assemble_psuedo_instruction(struct instruction_node *instr) {
             }   
             break;
         }
-        case 0x03: {
+        case MNEMONIC_NOT: {
             struct operand_node *rd = instr->operand_list;
             struct operand_node *rs = instr->operand_list->next;
             write_instruction(CREATE_INSTRUCTION_R(0, rs->value.reg, 0, rd->value.reg, 0, 0x27));
             break; 
         }
-        case 0x04: {
+        case MNEMONIC_BEQZ: {
             struct operand_node *rs = instr->operand_list;
             struct operand_node *label = instr->operand_list->next;
             /* Check if label has been defined */
@@ -496,46 +504,58 @@ int assemble_psuedo_instruction(struct instruction_node *instr) {
                 assemble_status = 0;
             }
             else {
-                offset_t branch_offset = (sym_entry->offset - (cfg_assembler->segment_offset[cfg_assembler->segment] + 4)) >> 2;
-                write_instruction(CREATE_INSTRUCTION_I(0x04, rs->value.reg, 0, branch_offset));
+                write_instruction(CREATE_INSTRUCTION_I(0x04, rs->value.reg, 0, get_branch_offset(sym_entry)));
             }   
             break;
         }
-        case 0x05: {
+        case MNEMONIC_BGE: {
             struct operand_node *rs = instr->operand_list;
             struct operand_node *rt = instr->operand_list->next;
             struct operand_node *label = instr->operand_list->next->next;
+            int rt_imm = rt->operand & OPERAND_IMMEDIATE;
+
             /* Check if label has been defined */
             struct symbol_table_entry *sym_entry = get_symbol_table(cfg_assembler->symbol_table, label->identifier);
             if(sym_entry->status == SYMBOL_UNDEFINED) {
-                insert_front(sym_entry->instr_list, (void *)instr);
                 assemble_status = 0;
+                insert_front(sym_entry->instr_list, (void *)instr);
             }
             else {
-                write_instruction(CREATE_INSTRUCTION_R(0, rs->value.reg, rt->value.reg, 1, 0, 0x2A));
-                offset_t branch_offset = (sym_entry->offset - (cfg_assembler->segment_offset[cfg_assembler->segment] + 4)) >> 2;
-                write_instruction(CREATE_INSTRUCTION_I(0x04, 1, 0, branch_offset)); 
+                if(rt_imm)
+                    write_instruction(CREATE_INSTRUCTION_I(0x0A, rs->value.reg, 1, rt->value.integer));
+                else
+                    write_instruction(CREATE_INSTRUCTION_R(0, rs->value.reg, rt->value.reg, 1, 0, 0x2A));
+                write_instruction(CREATE_INSTRUCTION_I(0x04, 1, 0, get_branch_offset(sym_entry))); 
             }
             break;
         }
-        case 0x06: {
+        case MNEMONIC_BLE: {
             struct operand_node *rs = instr->operand_list;
             struct operand_node *rt = instr->operand_list->next;
             struct operand_node *label = instr->operand_list->next->next;
+            int rt_imm = rt->operand & OPERAND_IMMEDIATE;
+
             /* Check if label has been defined */
             struct symbol_table_entry *sym_entry = get_symbol_table(cfg_assembler->symbol_table, label->identifier);
             if(sym_entry->status == SYMBOL_UNDEFINED) {
-                insert_front(sym_entry->instr_list, (void *)instr);
                 assemble_status = 0;
+                if(rt_imm) incr_segment_offset(0x4);
+                insert_front(sym_entry->instr_list, (void *)instr);
             }
             else {
-                write_instruction(CREATE_INSTRUCTION_R(0, rt->value.reg, rs->value.reg, 1, 0, 0x2A));
-                offset_t branch_offset = (sym_entry->offset - (cfg_assembler->segment_offset[cfg_assembler->segment] + 4)) >> 2;
-                write_instruction(CREATE_INSTRUCTION_I(0x04, 1, 0, branch_offset));
+                if(rt_imm) {
+                    write_instruction(CREATE_INSTRUCTION_I(0x08, rs->value.reg, 1, -1));
+                    write_instruction(CREATE_INSTRUCTION_I(0x0A, 1, 1, rt->value.integer));
+                    write_instruction(CREATE_INSTRUCTION_I(0x05, 1, 0, get_branch_offset(sym_entry)));
+                }
+                else {
+                    write_instruction(CREATE_INSTRUCTION_R(0, rt->value.reg, rs->value.reg, 1, 0, 0x2A));
+                    write_instruction(CREATE_INSTRUCTION_I(0x04, 1, 0, get_branch_offset(sym_entry)));
+                }
             }
             break;
         }
-        case 0x07: {
+        case MNEMONIC_BNEZ: {
             struct operand_node *rs = instr->operand_list;
             struct operand_node *label = instr->operand_list->next;
             /* Check if label has been defined */
@@ -545,15 +565,16 @@ int assemble_psuedo_instruction(struct instruction_node *instr) {
                 assemble_status = 0;
             }
             else {
-                offset_t branch_offset = (sym_entry->offset - (cfg_assembler->segment_offset[cfg_assembler->segment] + 4)) >> 2;
-                write_instruction(CREATE_INSTRUCTION_I(0x05, rs->value.reg, 0, branch_offset));  
+                write_instruction(CREATE_INSTRUCTION_I(0x05, rs->value.reg, 0, get_branch_offset(sym_entry)));  
             }
             break;
         }
-        case 0x08: {
+        case MNEMONIC_BLT: {
             struct operand_node *rs = instr->operand_list;
             struct operand_node *rt = instr->operand_list->next;
             struct operand_node *label = instr->operand_list->next->next;
+            int rt_imm = rt->operand & OPERAND_IMMEDIATE;
+
             /* Check if label has been defined */
             struct symbol_table_entry *sym_entry = get_symbol_table(cfg_assembler->symbol_table, label->identifier);
             if(sym_entry->status == SYMBOL_UNDEFINED) {
@@ -561,30 +582,41 @@ int assemble_psuedo_instruction(struct instruction_node *instr) {
                 assemble_status = 0;
             }
             else {
-                write_instruction(CREATE_INSTRUCTION_R(0, rs->value.reg, rt->value.reg, 1, 0, 0x2A));
-                offset_t branch_offset = (sym_entry->offset - (cfg_assembler->segment_offset[cfg_assembler->segment] + 4)) >> 2;
-                write_instruction(CREATE_INSTRUCTION_I(0x05, 1, 0, branch_offset));
+                if(rt_imm)
+                    write_instruction(CREATE_INSTRUCTION_I(0x0A, rs->value.reg, 1, rt->value.integer));
+                else
+                    write_instruction(CREATE_INSTRUCTION_R(0, rs->value.reg, rt->value.reg, 1, 0, 0x2A));
+                write_instruction(CREATE_INSTRUCTION_I(0x05, 1, 0, get_branch_offset(sym_entry)));
             }
             break;
         }
-        case 0x09: {
+        case MNEMONIC_BGT: {
             struct operand_node *rs = instr->operand_list;
             struct operand_node *rt = instr->operand_list->next;
             struct operand_node *label = instr->operand_list->next->next;
+            int rt_imm = rt->operand & OPERAND_IMMEDIATE;
+
             /* Check if label has been defined */
             struct symbol_table_entry *sym_entry = get_symbol_table(cfg_assembler->symbol_table, label->identifier);
             if(sym_entry->status == SYMBOL_UNDEFINED) {
+                if(rt_imm) incr_segment_offset(0x4);
                 insert_front(sym_entry->instr_list, (void *)instr);
                 assemble_status = 0;
             }
             else {
-                write_instruction(CREATE_INSTRUCTION_R(0, rt->value.reg, rs->value.reg, 1, 0, 0x2A));
-                offset_t branch_offset = (sym_entry->offset - (cfg_assembler->segment_offset[cfg_assembler->segment] + 4)) >> 2;
-                write_instruction(CREATE_INSTRUCTION_I(0x05, 1, 0, branch_offset)); 
+                if(rt_imm) {
+                    write_instruction(CREATE_INSTRUCTION_I(0x08, 0, 1, rt->value.integer));
+                    write_instruction(CREATE_INSTRUCTION_R(0, 1, rs->value.reg, 1, 0, 0x2A));
+                    write_instruction(CREATE_INSTRUCTION_I(0x05, 1, 0, get_branch_offset(sym_entry)));
+                }
+                else {
+                    write_instruction(CREATE_INSTRUCTION_R(0, rt->value.reg, rs->value.reg, 1, 0, 0x2A));
+                    write_instruction(CREATE_INSTRUCTION_I(0x05, 1, 0, get_branch_offset(sym_entry))); 
+                }
             }
             break;
         }
-        case 0x0A: {
+        case MNEMONIC_MUL: {
             struct operand_node *rd = instr->operand_list;
             struct operand_node *rs = instr->operand_list->next;
             struct operand_node *rt = instr->operand_list->next->next;
@@ -592,7 +624,7 @@ int assemble_psuedo_instruction(struct instruction_node *instr) {
             write_instruction(CREATE_INSTRUCTION_R(0, 0, 0, rd->value.reg, 0, 0x12));
             break;
         }
-        case 0x0B: {
+        case MNEMONIC_ABS: {
             struct operand_node *rd = instr->operand_list;
             struct operand_node *rs = instr->operand_list->next;
             write_instruction(CREATE_INSTRUCTION_R(0, 0, rs->value.reg, 1, 31, 0x03));
@@ -600,13 +632,13 @@ int assemble_psuedo_instruction(struct instruction_node *instr) {
             write_instruction(CREATE_INSTRUCTION_R(0, rd->value.reg, 1, rd->value.reg, 0, 0x23));
             break;
         }
-        case 0x0C: {
+        case MNEMONIC_NEG: {
             struct operand_node *rd = instr->operand_list;
             struct operand_node *rs = instr->operand_list->next;
             write_instruction(CREATE_INSTRUCTION_R(0, 0, rs->value.reg, rd->value.reg, 0, 0x22));
             break;
         }
-        case 0x0D: {
+        case MNEMONIC_ROR: {
             struct operand_node *rd = instr->operand_list;
             struct operand_node *rs = instr->operand_list->next;
             struct operand_node *imm = instr->operand_list->next->next;
@@ -615,7 +647,7 @@ int assemble_psuedo_instruction(struct instruction_node *instr) {
             write_instruction(CREATE_INSTRUCTION_R(0, rd->value.reg, 1, rd->value.reg, 0, 0x25));
             break;
         }
-        case 0x0E: {
+        case MNEMONIC_ROL: {
             struct operand_node *rd = instr->operand_list;
             struct operand_node *rs = instr->operand_list->next;
             struct operand_node *imm = instr->operand_list->next->next;
@@ -624,14 +656,14 @@ int assemble_psuedo_instruction(struct instruction_node *instr) {
             write_instruction(CREATE_INSTRUCTION_R(0, rd->value.reg, 1, rd->value.reg, 0, 0x25));
             break;
         }
-        case 0x0F: {
+        case MNEMONIC_SGT: {
             struct operand_node *rd = instr->operand_list;
             struct operand_node *rs = instr->operand_list->next;
             struct operand_node *rt = instr->operand_list->next->next;
             write_instruction(CREATE_INSTRUCTION_R(0, rt->value.reg, rs->value.reg, rd->value.reg, 0, 0x2A));
             break;
         }
-        case 0x10: {
+        case MNEMONIC_B: {
             struct operand_node *label = instr->operand_list;
             /* Check if label has been defined */
             struct symbol_table_entry *sym_entry = get_symbol_table(cfg_assembler->symbol_table, label->identifier);
@@ -640,17 +672,110 @@ int assemble_psuedo_instruction(struct instruction_node *instr) {
                 assemble_status = 0;
             }
             else {
-                offset_t branch_offset = (sym_entry->offset - (cfg_assembler->segment_offset[cfg_assembler->segment] + 4)) >> 2;
-                write_instruction(CREATE_INSTRUCTION_I(0x01, 0, 0x01, branch_offset));
+                write_instruction(CREATE_INSTRUCTION_I(0x01, 0, 0x01, get_branch_offset(sym_entry)));
             }
             break;
         }
-        case 0x11: {
+        case MNEMONIC_SNE: {
             struct operand_node *rd = instr->operand_list;
             struct operand_node *rs = instr->operand_list->next;
             struct operand_node *rt = instr->operand_list->next->next;
             write_instruction(CREATE_INSTRUCTION_R(0, rs->value.reg, rt->value.reg, rd->value.reg, 0, 0x23));
             write_instruction(CREATE_INSTRUCTION_R(0, 0, rd->value.reg, rd->value.reg, 0, 0x2B));
+            break;
+        }
+        case MNEMONIC_BLEU: {
+            struct operand_node *rs = instr->operand_list;
+            struct operand_node *rt = instr->operand_list->next;
+            struct operand_node *label = instr->operand_list->next->next;
+            int rt_imm = rt->operand & OPERAND_IMMEDIATE;
+            
+            /* Check if label has been defined */
+            struct symbol_table_entry *sym_entry = get_symbol_table(cfg_assembler->symbol_table, label->identifier);
+            if(sym_entry->status == SYMBOL_UNDEFINED) {
+                assemble_status = 0;
+                if(rt_imm) incr_segment_offset(0x4); /* Immediate operand requires an extra instruction */
+                insert_front(sym_entry->instr_list, (void *)instr);
+            }
+            else {
+                if(rt_imm) {
+                    write_instruction(CREATE_INSTRUCTION_I(0x08, 0, 1, rt->value.integer));
+                    write_instruction(CREATE_INSTRUCTION_R(0, 1, rs->value.reg, 1, 0, 0x2B));
+                    write_instruction(CREATE_INSTRUCTION_I(0x04, 1, 0, get_branch_offset(sym_entry))); 
+                }
+                else {
+                    write_instruction(CREATE_INSTRUCTION_R(0, rt->value.reg, rs->value.reg, 1, 0, 0x2B));
+                    write_instruction(CREATE_INSTRUCTION_I(0x04, 1, 0, get_branch_offset(sym_entry))); 
+                }
+            }
+            break;
+        }
+        case MNEMONIC_BGEU: {
+            struct operand_node *rs = instr->operand_list;
+            struct operand_node *rt = instr->operand_list->next;
+            struct operand_node *label = instr->operand_list->next->next;
+            int rt_imm = rt->operand & OPERAND_IMMEDIATE;
+
+            /* Check if label has been defined */
+            struct symbol_table_entry *sym_entry = get_symbol_table(cfg_assembler->symbol_table, label->identifier);
+            if(sym_entry->status == SYMBOL_UNDEFINED) {
+                assemble_status = 0;
+                insert_front(sym_entry->instr_list, (void *)instr);
+            }
+            else {
+                if(rt_imm)
+                    write_instruction(CREATE_INSTRUCTION_I(0x0B, rs->value.reg, 1, rt->value.integer));
+                else
+                    write_instruction(CREATE_INSTRUCTION_R(0, rs->value.reg, rt->value.reg, 1, 0, 0x2B));
+                write_instruction(CREATE_INSTRUCTION_I(0x04, 1, 0, get_branch_offset(sym_entry))); 
+            }
+            break;
+        }
+        case MNEMONIC_BLTU: {
+            struct operand_node *rs = instr->operand_list;
+            struct operand_node *rt = instr->operand_list->next;
+            struct operand_node *label = instr->operand_list->next->next;
+            int rt_imm = rt->operand & OPERAND_IMMEDIATE;
+
+            /* Check if label has been defined */
+            struct symbol_table_entry *sym_entry = get_symbol_table(cfg_assembler->symbol_table, label->identifier);
+            if(sym_entry->status == SYMBOL_UNDEFINED) {
+                insert_front(sym_entry->instr_list, (void *)instr);
+                assemble_status = 0;
+            }
+            else {
+                if(rt_imm)
+                    write_instruction(CREATE_INSTRUCTION_I(0x0B, rs->value.reg, 1, rt->value.integer));
+                else
+                    write_instruction(CREATE_INSTRUCTION_R(0, rs->value.reg, rt->value.reg, 1, 0, 0x2B));
+                write_instruction(CREATE_INSTRUCTION_I(0x05, 1, 0, get_branch_offset(sym_entry)));
+            }
+            break;
+        }
+        case MNEMONIC_BGTU: {
+            struct operand_node *rs = instr->operand_list;
+            struct operand_node *rt = instr->operand_list->next;
+            struct operand_node *label = instr->operand_list->next->next;
+            int rt_imm = rt->operand & OPERAND_IMMEDIATE;
+
+            /* Check if label has been defined */
+            struct symbol_table_entry *sym_entry = get_symbol_table(cfg_assembler->symbol_table, label->identifier);
+            if(sym_entry->status == SYMBOL_UNDEFINED) {
+                if(rt_imm) incr_segment_offset(0x4);
+                insert_front(sym_entry->instr_list, (void *)instr);
+                assemble_status = 0;
+            }
+            else {
+                if(rt_imm) {
+                    write_instruction(CREATE_INSTRUCTION_I(0x08, 0, 1, rt->value.integer));
+                    write_instruction(CREATE_INSTRUCTION_R(0, 1, rs->value.reg, 1, 0, 0x2B));
+                    write_instruction(CREATE_INSTRUCTION_I(0x05, 1, 0, get_branch_offset(sym_entry)));
+                }
+                else {
+                    write_instruction(CREATE_INSTRUCTION_R(0, rt->value.reg, rs->value.reg, 1, 0, 0x2B));
+                    write_instruction(CREATE_INSTRUCTION_I(0x05, 1, 0, get_branch_offset(sym_entry))); 
+                }
+            }
             break;
         }
     }
@@ -663,17 +788,17 @@ int assemble_psuedo_instruction(struct instruction_node *instr) {
 int assemble_funct_instruction(struct instruction_node *instr) {
     struct opcode_entry *entry = (struct opcode_entry *)instr->mnemonic->attrptr;
 
-    switch(entry->funct) {
-        case 0x21:
-        case 0x24:
-        case 0x27:
-        case 0x25:
-        case 0x2A:
-        case 0x2B:
-        case 0x22:
-        case 0x23:
-        case 0x26:
-        case 0x20: {
+    switch(entry - opcode_table) {
+        case MNEMONIC_ADD:
+        case MNEMONIC_ADDU:
+        case MNEMONIC_AND:
+        case MNEMONIC_NOR:
+        case MNEMONIC_OR:
+        case MNEMONIC_SLT:
+        case MNEMONIC_SLTU:
+        case MNEMONIC_SUB:
+        case MNEMONIC_SUBU:
+        case MNEMONIC_XOR: {
             struct operand_node *rd = instr->operand_list;
             struct operand_node *rs = instr->operand_list->next;
             struct operand_node *rt = instr->operand_list->next->next;
@@ -681,22 +806,22 @@ int assemble_funct_instruction(struct instruction_node *instr) {
             break; 
         }
 
-        case 0x08: {
+        case MNEMONIC_JR: {
             struct operand_node *rs = instr->operand_list;
             write_instruction(CREATE_INSTRUCTION_R(0, rs->value.reg, 0, 0, 0, entry->funct));
             break;
         }
 
-        case 0x10:
-        case 0x12: {
+        case MNEMONIC_MFHI:
+        case MNEMONIC_MFLO: {
             struct operand_node *rd = instr->operand_list;
             write_instruction(CREATE_INSTRUCTION_R(0, 0, 0, rd->value.reg, 0, entry->funct));
             break;
         }
 
-        case 0x00:
-        case 0x03:
-        case 0x02: {
+        case MNEMONIC_SLL:
+        case MNEMONIC_SRA:
+        case MNEMONIC_SRL: {
             struct operand_node *rd = instr->operand_list;
             struct operand_node *rt = instr->operand_list->next;
             struct operand_node *shamt = instr->operand_list->next->next;
@@ -704,14 +829,14 @@ int assemble_funct_instruction(struct instruction_node *instr) {
             break;
         }
 
-        case 0x0C:
+        case MNEMONIC_SYSCALL:
             write_instruction(CREATE_INSTRUCTION_R(0, 0, 0, 0, 0, entry->funct));
             break;
 
-        case 0x1A:
-        case 0x1B:
-        case 0x18:
-        case 0x19: {
+        case MNEMONIC_DIV:
+        case MNEMONIC_DIVU:
+        case MNEMONIC_MULT:
+        case MNEMONIC_MULTU: {
             struct operand_node *rs = instr->operand_list;
             struct operand_node *rt = instr->operand_list->next;
             write_instruction(CREATE_INSTRUCTION_R(0, rs->value.reg, rt->value.reg, 0, 0, entry->funct));
@@ -729,14 +854,14 @@ int assemble_opcode_instruction(struct instruction_node *instr) {
     
     int assemble_status = 1; /* Assume instruction is assembled */
 
-    switch(entry->opcode) {
-        case 0x08:
-        case 0x09:
-        case 0x0C:
-        case 0x0D:
-        case 0x0A:
-        case 0x0B:
-        case 0x0E: { /* ALU OP */
+    switch(entry - opcode_table) {
+        case MNEMONIC_ADDI:
+        case MNEMONIC_ADDIU:
+        case MNEMONIC_ANDI:
+        case MNEMONIC_ORI:
+        case MNEMONIC_SLTI:
+        case MNEMONIC_SLTIU:
+        case MNEMONIC_XORI: { /* ALU OP */
             struct operand_node *rt = instr->operand_list;
             struct operand_node *rs = instr->operand_list->next;
             struct operand_node *imm = instr->operand_list->next->next;
@@ -744,7 +869,7 @@ int assemble_opcode_instruction(struct instruction_node *instr) {
             break;
         }
 
-        case 0x0F: {
+        case MNEMONIC_LUI: {
             struct operand_node *rd = instr->operand_list;
             struct operand_node *imm = instr->operand_list->next;
             uint32_t immediate = imm->value.integer;
@@ -752,9 +877,12 @@ int assemble_opcode_instruction(struct instruction_node *instr) {
             break;
         }
 
-        case 0x01:
-        case 0x07:
-        case 0x06: {
+        case MNEMONIC_BGEZ:
+        case MNEMONIC_BGEZAL:
+        case MNEMONIC_BLTZ:
+        case MNEMONIC_BLTZAL:
+        case MNEMONIC_BGTZ:
+        case MNEMONIC_BLEZ: {
             struct operand_node *rs = instr->operand_list;
             struct operand_node *label = instr->operand_list->next;
             /* Check if label has been defined */
@@ -764,32 +892,39 @@ int assemble_opcode_instruction(struct instruction_node *instr) {
                 assemble_status = 0;
             }
             else {
-                offset_t branch_offset = (sym_entry->offset - (cfg_assembler->segment_offset[cfg_assembler->segment] + 4)) >> 2;
-                write_instruction(CREATE_INSTRUCTION_I(entry->opcode, rs->value.reg, entry->rt, branch_offset));
+                write_instruction(CREATE_INSTRUCTION_I(entry->opcode, rs->value.reg, entry->rt, get_branch_offset(sym_entry)));
             }   
             break;
         }
 
-        case 0x05:
-        case 0x04: {
+        case MNEMONIC_BNE:
+        case MNEMONIC_BEQ: {
             struct operand_node *rs = instr->operand_list;
             struct operand_node *rt = instr->operand_list->next;
             struct operand_node *label = instr->operand_list->next->next;
+            int rt_imm = rt->operand & OPERAND_IMMEDIATE;
+
             /* Check if label has been defined */
             struct symbol_table_entry *sym_entry = get_symbol_table(cfg_assembler->symbol_table, label->identifier);
             if(sym_entry->status == SYMBOL_UNDEFINED) {
-                insert_front(sym_entry->instr_list, (void *)instr);
                 assemble_status = 0;
+                if(rt_imm) incr_segment_offset(0x4); /* Special Case: Immediate operand requies extra instruction */
+                insert_front(sym_entry->instr_list, (void *)instr);
             }
             else {
-                offset_t branch_offset = (sym_entry->offset - (cfg_assembler->segment_offset[cfg_assembler->segment] + 4)) >> 2;
-                write_instruction(CREATE_INSTRUCTION_I(entry->opcode, rs->value.reg, rt->value.reg, branch_offset));
+                if(rt_imm) {
+                    write_instruction(CREATE_INSTRUCTION_I(0x08, 0, 1, rt->value.integer));
+                    write_instruction(CREATE_INSTRUCTION_I(entry->opcode, 1, rs->value.reg, get_branch_offset(sym_entry)));
+                }
+                else {
+                    write_instruction(CREATE_INSTRUCTION_I(entry->opcode, rs->value.reg, rt->value.reg, get_branch_offset(sym_entry)));
+                }
             }
             break;
         }
 
-        case 0x02:
-        case 0x03: {
+        case MNEMONIC_JMP:
+        case MNEMONIC_JAL: {
             struct operand_node *label = instr->operand_list;
             /* Check if label has been defined */
             struct symbol_table_entry *sym_entry = get_symbol_table(cfg_assembler->symbol_table, label->identifier);
@@ -804,14 +939,14 @@ int assemble_opcode_instruction(struct instruction_node *instr) {
         }
         
 
-        case 0x20:
-        case 0x24:
-        case 0x21:
-        case 0x25:
-        case 0x23: 
-        case 0x28: 
-        case 0x29:
-        case 0x2B: {
+        case MNEMONIC_LB:
+        case MNEMONIC_LBU:
+        case MNEMONIC_LH:
+        case MNEMONIC_LHU:
+        case MNEMONIC_LW: 
+        case MNEMONIC_SB: 
+        case MNEMONIC_SH:
+        case MNEMONIC_SW: {
             struct operand_node *rt = instr->operand_list;
             struct operand_node *addr = instr->operand_list->next;
             if(addr->operand == OPERAND_LABEL) {
@@ -915,7 +1050,7 @@ int check_directive(struct instruction_node *instr) {
     }
 
     /* Check if segment is text before handling directive */
-    switch(entry->opcode) {
+    switch(entry - opcode_table) {
         case DIRECTIVE_ASCII:
         case DIRECTIVE_ASCIIZ:
         case DIRECTIVE_HALF:
@@ -960,7 +1095,7 @@ int check_directive(struct instruction_node *instr) {
             cfg_assembler->segment = SEGMENT_KDATA;
             break;
         case DIRECTIVE_ALIGN: {
-            if(operand_list->value.integer < 0 || operand_list->value.integer >= 31) {
+            if(operand_list->value.integer > 31) {
                 fprintf(stderr, "Directive '.align n' expects n to be within the range of [0, 31] on line %ld\n", cfg_assembler->lineno);
                 cfg_assembler->status = ASSEMBLER_STATUS_FAIL;
                 destroy_instruction(instr);
@@ -1300,7 +1435,7 @@ astatus_t execute_assembler(struct assembler *assembler, const char **files, siz
         for(segment_t segment = 0; segment < MAX_SEGMENTS; ++segment) {
             if(assembler->segment_memory_offset[segment] == 0) continue;
             printf("[ * Memory Segment %-4s * ]", segment_string[segment]);
-            for(int i = 0; i < assembler->segment_memory_offset[segment]; i++) {
+            for(unsigned int i = 0; i < assembler->segment_memory_offset[segment]; i++) {
                 if((i & (0x3)) == 0) printf("\n0x%08X  ", SEGMENT_OFFSET_BASE[segment] + i);
                 unsigned char c = *((unsigned char *)assembler->segment_memory[segment] + i);
                 printf("\\%02X ", c);

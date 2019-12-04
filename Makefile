@@ -1,6 +1,6 @@
 # Compiler, initially GCC however can be changed if needed
 CC       = gcc
-CFLAGS   = -Wall -Wno-missing-braces
+CFLAGS   = -Wall -Wextra -O2
 CFDEBUG  = -g -DDEBUG
 SDIR = src
 ODIR = obj

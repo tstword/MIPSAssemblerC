@@ -10,9 +10,17 @@
 #include "assembler.h"
 #include "mipsfhdr.h"
 
-void write_object_file(FILE *fp, struct assembler *assembler) {
+void write_object_file(struct assembler *assembler, const char *file) {
     struct MIPS_file_header file_hdr;
     size_t nbytes;
+    FILE *fp;
+
+    if((fp = fopen(file, "wb+")) == NULL) {
+        fprintf(stderr, "Failed to open output file '%s' : ", file);
+        perror(NULL);
+        destroy_assembler(&assembler);
+        exit(EXIT_FAILURE);
+    }
 
     memset((void *)&file_hdr, 0, sizeof(file_hdr));
 
@@ -73,22 +81,48 @@ void write_object_file(FILE *fp, struct assembler *assembler) {
             file_offset += sizeof(section_hdr) + assembler->segment_memory_offset[segment];
         }
     }
+
+    fclose(fp);
+}
+
+void dump_segment(struct assembler *assembler, segment_t segment, const char *file) {
+    FILE *fp;
+    if((fp = fopen(file, "wb+")) == NULL) {
+        fprintf(stderr, "Failed to open output file '%s' : ", file);
+        perror(NULL);
+        destroy_assembler(&assembler);
+        exit(EXIT_FAILURE);
+    }
+
+    size_t nbytes = fwrite(assembler->segment_memory[segment], 0x1, assembler->segment_memory_offset[segment], fp);
+    if(nbytes != assembler->segment_memory_offset[segment]) {
+        perror("Segment Dump Error: Failed to write segment to file: ");
+        destroy_assembler(&assembler);
+        exit(EXIT_FAILURE);
+    }
+
+    fclose(fp);
 }
 
 void display_help_msg(char *program) {
-    printf("Usage: %s [-a] [-h] [-o output] file...\n", program);
+    printf("Usage: %s [-a] [-h] [-t output] [-d output] [-o output] file...\n", program);
     printf("A MIPS assembler written in C\n\n");
     printf("The following options may be used:\n");
-    printf("  %-20s Only assembles program, does not create object file\n", "-a");
+    printf("  %-20s Only assembles program, does not create object code file\n", "-a");
+    printf("  %-20s * Note: This does not disable segment dumps\n", "");
+    printf("  %-20s Stores data segment in <output>\n", "-d <output>");
     printf("  %-20s Displays this message\n", "-h");
-    printf("  %-20s Stores object code in <output>\n\n", "-o <output>");
+    printf("  %-20s Stores text segment in <output>\n", "-t <output>");
+    printf("  %-20s Stores object code in <output>\n", "-o <output>");
+    printf("  %-20s * Note: If this option is not specified, <output> defaults to a.obj\n\n", "");
     printf("Refer to the repository at <https://github.com/tstword/MIPSAssemblerC>\n");
     exit(EXIT_SUCCESS);
 }
 
 int main(int argc, char *argv[]) {
-    FILE *output_fp = NULL;
     const char *output_file = "a.obj";
+    const char *text_file = NULL;
+    const char *data_file = NULL;
     int assemble_only = 0, display_help = 0;
     
     const char **input_array;
@@ -96,13 +130,19 @@ int main(int argc, char *argv[]) {
     
 #ifndef _WIN32
     int opt;
-    while((opt = getopt(argc, argv, "aho:")) != -1) {
+    while((opt = getopt(argc, argv, "aho:t:d:")) != -1) {
         switch(opt) {
             case 'a':
                 assemble_only = 1;
                 break;
             case 'h':
                 display_help = 1;
+                break;
+            case 't':
+                text_file = optarg;
+                break;
+            case 'd':
+                data_file = optarg;
                 break;
             case 'o':
                 output_file = optarg;
@@ -143,6 +183,22 @@ int main(int argc, char *argv[]) {
                         output_file = argv[i + 1];
                         skip_index = 1;
                         break;
+                    case 't':
+                        if(i + 1 == argc || argv[i + 1][0] == '-') {
+                            fprintf(stderr, "%s: option requires an argument -- 'o'\n", argv[0]);
+                            return EXIT_FAILURE;
+                        }
+                        text_file = argv[i + 1];
+                        skip_index = 1;
+                        break;
+                    case 'd':
+                        if(i + 1 == argc || argv[i + 1][0] == '-') {
+                            fprintf(stderr, "%s: option requires an argument -- 'o'\n", argv[0]);
+                            return EXIT_FAILURE;
+                        }
+                        data_file = argv[i + 1];
+                        skip_index = 1;
+                        break;
                     default: /* ? */
                         fprintf(stderr, "%s: invalid option -- '%c'\n", argv[0], ch);
                         fprintf(stderr, "\nSee '%s -h' for more information\n", argv[0]);
@@ -169,22 +225,19 @@ int main(int argc, char *argv[]) {
 #ifdef _WIN32
     free(input_array);   /* I'm annoyed that I have to do this but oh well, nothing to do right now. */
 #endif
-
     if(status != ASSEMBLER_STATUS_OK) {
         fprintf(stderr, "\nFailed to assemble program\n");
         destroy_assembler(&assembler);
         return EXIT_FAILURE;
     }
     else if(!assemble_only) {
-        if((output_fp = fopen(output_file, "wb+")) == NULL) {
-            fprintf(stderr, "Failed to open output file '%s' : ", output_file);
-            perror(NULL);
-            destroy_assembler(&assembler);
-            return EXIT_FAILURE;
-        }
-        write_object_file(output_fp, assembler);
-        fclose(output_fp);
+        write_object_file(assembler, output_file);
     }
+
+    /* Dump segments to file if specified */
+    if(text_file != NULL) dump_segment(assembler, SEGMENT_TEXT, text_file);
+    if(data_file != NULL) dump_segment(assembler, SEGMENT_DATA, data_file);
+
     destroy_assembler(&assembler);
 
     return EXIT_SUCCESS;

@@ -74,24 +74,24 @@
 #define MNEMONIC_XORI     0x28
 
 /* Psuedo Instructions */
-#define MNEMONIC_MOVE     0x29
-#define MNEMONIC_LI       0x2A
-#define MNEMONIC_LA       0x2B
-#define MNEMONIC_NOT      0x2C
-#define MNEMONIC_BEQZ     0x2D
-#define MNEMONIC_BGE      0x2E
-#define MNEMONIC_BLE      0x2F
-#define MNEMONIC_BNEZ     0x30
-#define MNEMONIC_BLT      0x31
-#define MNEMONIC_BGT      0x32
+#define MNEMONIC_MOVE      0x29
+#define MNEMONIC_LI        0x2A
+#define MNEMONIC_LA        0x2B
+#define MNEMONIC_NOT       0x2C
+#define MNEMONIC_BEQZ      0x2D
+#define MNEMONIC_BGE       0x2E
+#define MNEMONIC_BLE       0x2F
+#define MNEMONIC_BNEZ      0x30
+#define MNEMONIC_BLT       0x31
+#define MNEMONIC_BGT       0x32
 
 /* Instructions I forgot about... */
-#define MNEMONIC_DIV      0x33
-#define MNEMONIC_DIVU     0x34
-#define MNEMONIC_MFHI     0x35
-#define MNEMONIC_MFLO     0x36
-#define MNEMONIC_MULT     0x37
-#define MNEMONIC_MULTU    0x38
+#define MNEMONIC_DIV       0x33
+#define MNEMONIC_DIVU      0x34
+#define MNEMONIC_MFHI      0x35
+#define MNEMONIC_MFLO      0x36
+#define MNEMONIC_MULT      0x37
+#define MNEMONIC_MULTU     0x38
 
 #define DIRECTIVE_INCLUDE  0x39
 #define DIRECTIVE_TEXT     0x3A
@@ -115,6 +115,9 @@
 #define MNEMONIC_B         0x4B
 #define MNEMONIC_SNE       0x4C
 #define MNEMONIC_BLEU      0x4D
+#define MNEMONIC_BGEU      0x4E
+#define MNEMONIC_BLTU      0x4F
+#define MNEMONIC_BGTU      0x50
 
 /* Opcode type flags */
 #define OPTYPE_DEFAULT    0x0
