@@ -565,13 +565,10 @@ state_fsm character_fsm(struct tokenizer *tokenizer) {
     int ch = tgetc(tokenizer);
 
     switch(ch) {
-        case 'A' ... 'Z':
-        case 'a' ... 'z':
-        case '0' ... '9':
-            return quote_state;
         case '\\':
             return escape_state;
         default:
+            if(isprint(ch)) return quote_state;
             tungetc(ch, tokenizer);
             report_fsm(tokenizer, "Expected C-style character on line %ld, col %ld", tokenizer->lineno, tokenizer->colno);
             return invalid_state;
@@ -591,6 +588,11 @@ state_fsm escape_fsm(struct tokenizer *tokenizer) {
         case '0':
         case 'a':
         case 'f':
+        case 'e':
+        case 'v':
+        case '\'':
+        case '"':
+        case '?':
         case '\\':
             return quote_state;
         default:
@@ -660,11 +662,17 @@ token_t return_token(token_t token, struct tokenizer *tokenizer) {
             if(*tokenizer->lexbuf == '\'') {
                 if(*(tokenizer->lexbuf + 1) == '\\') {
                     switch(*(tokenizer->lexbuf + 2)) {
-                        case '\\':
-                            tokenizer->attrval = '\\';
+                        case 'a':
+                            tokenizer->attrval = '\a';
                             break;
-                        case 't':
-                            tokenizer->attrval = '\t';
+                        case 'b':
+                            tokenizer->attrval = '\b';
+                            break;
+                        case 'e':
+                            tokenizer->attrval = '\e';
+                            break;
+                        case 'f':
+                            tokenizer->attrval = '\f';
                             break;
                         case 'n':
                             tokenizer->attrval = '\n';
@@ -672,18 +680,27 @@ token_t return_token(token_t token, struct tokenizer *tokenizer) {
                         case 'r':
                             tokenizer->attrval = '\r';
                             break;
-                        case 'b':
-                            tokenizer->attrval = '\b';
+                        case 't':
+                            tokenizer->attrval = '\t';
                             break;
-                        case 'a':
-                            tokenizer->attrval = '\a';
+                        case 'v':
+                            tokenizer->attrval = '\v';
+                            break;
+                        case '\\':
+                            tokenizer->attrval = '\\';
+                            break;
+                        case '\'':
+                            tokenizer->attrval = '\'';
+                            break;
+                        case '"':
+                            tokenizer->attrval = '\"';
+                            break;
+                        case '?':
+                            tokenizer->attrval = '\?';
                             break;
                         case '0':
                             tokenizer->attrval = '\0';
-                            break;
-                        case 'f':
-                            tokenizer->attrval = '\f';
-                            break;
+                            break;  
                         default:
                             report_fsm(tokenizer, "Unrecognized escape character %c", *(tokenizer->lexbuf + 2));
                             return TOK_INVALID;
