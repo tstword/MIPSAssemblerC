@@ -443,6 +443,18 @@ int verify_operand_list(struct reserved_entry *res_entry, struct operand_node *o
     return 1;
 }
 
+void destroy_instruction(struct instruction_node *instr) {
+    /* Free operands */
+    struct operand_node *op_node = instr->operand_list;
+    while(op_node != NULL) {
+        struct operand_node *next_op = op_node->next;
+        if(op_node->operand == OPERAND_LABEL || op_node->operand == OPERAND_STRING) free(op_node->identifier);
+        free(op_node);
+        op_node = next_op;
+    }
+    free(instr);
+}
+
 int assemble_psuedo_instruction(struct instruction_node *instr) {
     struct opcode_entry *entry = (struct opcode_entry *)instr->mnemonic->attrptr;
     
@@ -865,7 +877,17 @@ int assemble_opcode_instruction(struct instruction_node *instr) {
             struct operand_node *rt = instr->operand_list;
             struct operand_node *rs = instr->operand_list->next;
             struct operand_node *imm = instr->operand_list->next->next;
-            write_instruction(CREATE_INSTRUCTION_I(entry->opcode, rs->value.reg, rt->value.reg, imm->value.integer));
+            int immediate = imm->value.integer; /* Temporary fix, still figuring out how to handle this generally */
+
+            if(((immediate >> 15) & 0x1FFFF) != 0x1FFFF && ((immediate >> 16) & 0xFFFF) != 0x0000) {
+                /* 32-bit sign extended or unsigned value */
+                write_instruction(CREATE_INSTRUCTION_I(0x0F, 0, 1, (immediate >> 16)));
+                write_instruction(CREATE_INSTRUCTION_I(0x0D, 1, 1, immediate));
+                write_instruction(CREATE_INSTRUCTION_R(0, rs->value.reg, 1, rt->value.reg, 0, 0x20));
+            }
+            else {
+                write_instruction(CREATE_INSTRUCTION_I(entry->opcode, rs->value.reg, rt->value.reg, imm->value.integer));
+            }
             break;
         }
 
@@ -971,18 +993,6 @@ int assemble_opcode_instruction(struct instruction_node *instr) {
     if(!assemble_status) incr_segment_offset(0x4);
 
     return assemble_status;
-}
-
-void destroy_instruction(struct instruction_node *instr) {
-    /* Free operands */
-    struct operand_node *op_node = instr->operand_list;
-    while(op_node != NULL) {
-        struct operand_node *next_op = op_node->next;
-        if(op_node->operand == OPERAND_LABEL || op_node->operand == OPERAND_STRING) free(op_node->identifier);
-        free(op_node);
-        op_node = next_op;
-    }
-    free(instr);
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -1111,6 +1121,7 @@ int check_directive(struct instruction_node *instr) {
         }
         case DIRECTIVE_WORD: {
             struct operand_node *current_operand = operand_list;
+            align_segment_offset(2);
             while(current_operand != NULL) {
                 if(current_operand->operand & OPERAND_LABEL) {
                     /* Check if label has been defined */
@@ -1139,6 +1150,7 @@ int check_directive(struct instruction_node *instr) {
         }
         case DIRECTIVE_HALF: {
             struct operand_node *current_operand = operand_list;
+            align_segment_offset(1);
             while(current_operand != NULL) {
                 int value = current_operand->value.integer;
                 write_segment_memory((void *)&value, 0x2);

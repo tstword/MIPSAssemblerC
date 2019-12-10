@@ -16,7 +16,7 @@ void write_object_file(struct assembler *assembler, const char *file) {
     FILE *fp;
 
     if((fp = fopen(file, "wb+")) == NULL) {
-        fprintf(stderr, "Failed to open output file '%s' : ", file);
+        fprintf(stderr, "Failed to open output file '%s: Error: ", file);
         perror(NULL);
         destroy_assembler(&assembler);
         exit(EXIT_FAILURE);
@@ -88,7 +88,7 @@ void write_object_file(struct assembler *assembler, const char *file) {
 void dump_segment(struct assembler *assembler, segment_t segment, const char *file) {
     FILE *fp;
     if((fp = fopen(file, "wb+")) == NULL) {
-        fprintf(stderr, "Failed to open output file '%s' : ", file);
+        fprintf(stderr, "Failed to open output file '%s': Error: ", file);
         perror(NULL);
         destroy_assembler(&assembler);
         exit(EXIT_FAILURE);
