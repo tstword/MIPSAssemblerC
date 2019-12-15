@@ -63,8 +63,9 @@ struct operand_node {
     union {
         char *identifier;
         struct { 
-            uint64_t integer : 32;
-            uint64_t reg : 32;
+            uint32_t integer;
+            uint8_t neg;
+            uint8_t reg;
         } value;
     };
     struct operand_node *next;

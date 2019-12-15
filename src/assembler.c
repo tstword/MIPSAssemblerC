@@ -60,12 +60,12 @@ struct assembler *cfg_assembler = NULL;
 
 /* Base and limits for segments */
 const offset_t SEGMENT_OFFSET_BASE[MAX_SEGMENTS]  = { 
-    [SEGMENT_TEXT]  = 0x00400000, [SEGMENT_DATA]  = 0x10000000, 
+    [SEGMENT_TEXT]  = 0x00400000, [SEGMENT_DATA]  = 0x10010000, 
     [SEGMENT_KTEXT] = 0x80000000, [SEGMENT_KDATA] = 0x90000000 
 };
 
 const offset_t SEGMENT_OFFSET_LIMIT[MAX_SEGMENTS] = { 
-    [SEGMENT_TEXT]  = 0x0FFFFFFF, [SEGMENT_DATA]  = 0x1000FFFF,
+    [SEGMENT_TEXT]  = 0x0FFFFFFF, [SEGMENT_DATA]  = 0x7FFFFFFF,
     [SEGMENT_KTEXT] = 0x8FFFFFFF, [SEGMENT_KDATA] = 0xFFFEFFFF
 };
 
@@ -157,6 +157,57 @@ void write_instruction(instruction_t instruction) {
     incr_segment_offset(0x4);
 }
 
+void write_escaped_string(char *string) {
+    char ch;
+    while((ch = *string++) != '\0') {
+        if(ch == '\\') {
+            switch(*string++) {
+                case 'a':
+                    ch = '\a';
+                    break;
+                case 'b':
+                    ch = '\b';
+                    break;
+                case 'e':
+                    ch = '\e';
+                    break;
+                case 'f':
+                    ch = '\f';
+                    break;
+                case 'n':
+                    ch = '\n';
+                    break;
+                case 'r':
+                    ch = '\r';
+                    break;
+                case 't':
+                    ch = '\t';
+                    break;
+                case 'v':
+                    ch = '\v';
+                    break;
+                case '\\':
+                    ch = '\\';
+                    break;
+                case '\'':
+                    ch = '\'';
+                    break;
+                case '"':
+                    ch = '\"';
+                    break;
+                case '?':
+                    ch = '\?';
+                    break;
+                case '0':
+                    ch = '\0';
+                    break;  
+            }
+        }
+        write_segment_memory((void *)&ch, 0x1);
+        incr_segment_offset(0x1);
+    }
+}
+
 offset_t get_branch_offset(struct symbol_table_entry *entry) {
     return (entry->offset - (cfg_assembler->segment_offset[cfg_assembler->segment] + 4)) >> 2;
 }
@@ -214,6 +265,19 @@ void label_cfg() {
         
         if(cfg_assembler->lookahead == TOK_COLON) {
             match_cfg(TOK_COLON);
+
+            if(cfg_assembler->lookahead == TOK_DIRECTIVE) {
+                struct opcode_entry *entry = (struct opcode_entry *)((struct reserved_entry *)cfg_assembler->tokenizer->attrptr)->attrptr;
+                switch(entry - opcode_table) {
+                    case DIRECTIVE_WORD:
+                        align_segment_offset(2);
+                        break;
+                    case DIRECTIVE_HALF:
+                        align_segment_offset(1);
+                        break;
+                }
+            }
+
             struct symbol_table_entry *entry;
             if((entry = get_symbol_table(cfg_assembler->symbol_table, id)) != NULL) {
                 if(entry->status != SYMBOL_UNDEFINED) {
@@ -628,6 +692,8 @@ int assemble_psuedo_instruction(struct instruction_node *instr) {
             }
             break;
         }
+        /* Apparently, MARS doesn't treat mul as a psuedo-instruction it is a core instruction 
+         * I'll leave this here for now until I decide if I want to keep it a psuedo or not */
         case MNEMONIC_MUL: {
             struct operand_node *rd = instr->operand_list;
             struct operand_node *rs = instr->operand_list->next;
@@ -869,21 +935,38 @@ int assemble_opcode_instruction(struct instruction_node *instr) {
     switch(entry - opcode_table) {
         case MNEMONIC_ADDI:
         case MNEMONIC_ADDIU:
+        case MNEMONIC_SLTI:
+        case MNEMONIC_SLTIU: { /* ALU OP */
+            struct operand_node *rt = instr->operand_list;
+            struct operand_node *rs = instr->operand_list->next;
+            struct operand_node *imm = instr->operand_list->next->next;
+            int immediate = imm->value.integer; /* Temporary fix, still figuring out how to handle this generally */
+
+            if(((immediate >> 15) & 0x1FFFF) != 0x1FFFF && ((immediate >> 15) & 0x1FFFF) != 0x00000) {
+                /* 32-bit sign extended or unsigned value */
+                write_instruction(CREATE_INSTRUCTION_I(0x0F, 0, 1, (immediate >> 16)));
+                write_instruction(CREATE_INSTRUCTION_I(0x0D, 1, 1, immediate));
+                write_instruction(CREATE_INSTRUCTION_R(0, rs->value.reg, 1, rt->value.reg, 0, entry->opcode + 0x18));
+            }
+            else {
+                write_instruction(CREATE_INSTRUCTION_I(entry->opcode, rs->value.reg, rt->value.reg, imm->value.integer));
+            }
+            break;
+        }
+
         case MNEMONIC_ANDI:
         case MNEMONIC_ORI:
-        case MNEMONIC_SLTI:
-        case MNEMONIC_SLTIU:
         case MNEMONIC_XORI: { /* ALU OP */
             struct operand_node *rt = instr->operand_list;
             struct operand_node *rs = instr->operand_list->next;
             struct operand_node *imm = instr->operand_list->next->next;
             int immediate = imm->value.integer; /* Temporary fix, still figuring out how to handle this generally */
 
-            if(((immediate >> 15) & 0x1FFFF) != 0x1FFFF && ((immediate >> 16) & 0xFFFF) != 0x0000) {
+            if(((immediate >> 16) & 0xFFFF) != 0x0000) {
                 /* 32-bit sign extended or unsigned value */
                 write_instruction(CREATE_INSTRUCTION_I(0x0F, 0, 1, (immediate >> 16)));
                 write_instruction(CREATE_INSTRUCTION_I(0x0D, 1, 1, immediate));
-                write_instruction(CREATE_INSTRUCTION_R(0, rs->value.reg, 1, rt->value.reg, 0, 0x20));
+                write_instruction(CREATE_INSTRUCTION_R(0, rs->value.reg, 1, rt->value.reg, 0, entry->opcode + 0x18));
             }
             else {
                 write_instruction(CREATE_INSTRUCTION_I(entry->opcode, rs->value.reg, rt->value.reg, imm->value.integer));
@@ -925,6 +1008,8 @@ int assemble_opcode_instruction(struct instruction_node *instr) {
             struct operand_node *rt = instr->operand_list->next;
             struct operand_node *label = instr->operand_list->next->next;
             int rt_imm = rt->operand & OPERAND_IMMEDIATE;
+
+            /* TO-DO: Determine a way to distinguish between positive and negative integers (32-bit) */
 
             /* Check if label has been defined */
             struct symbol_table_entry *sym_entry = get_symbol_table(cfg_assembler->symbol_table, label->identifier);
@@ -986,6 +1071,14 @@ int assemble_opcode_instruction(struct instruction_node *instr) {
             else {
                 write_instruction(CREATE_INSTRUCTION_I(entry->opcode, addr->value.reg, rt->value.reg, addr->value.integer));
             }
+            break;
+        }
+
+        case MNEMONIC_MUL: {
+            struct operand_node *rd = instr->operand_list;
+            struct operand_node *rs = instr->operand_list->next;
+            struct operand_node *rt = instr->operand_list->next->next;
+            write_instruction(CREATE_INSTRUCTION_R(entry->opcode, rs->value.reg, rt->value.reg, rd->value.reg, 0, entry->funct));
             break;
         }
     }
@@ -1170,15 +1263,17 @@ int check_directive(struct instruction_node *instr) {
             break;
         }
         case DIRECTIVE_ASCII: {
-            offset_t length = strlen(operand_list->identifier);
-            write_segment_memory((void *)operand_list->identifier, length);
-            incr_segment_offset(length);
+            write_escaped_string(operand_list->identifier);
+            // offset_t length = strlen(operand_list->identifier);
+            // write_segment_memory((void *)operand_list->identifier, length);
+            // incr_segment_offset(length);
             break;
         }
         case DIRECTIVE_ASCIIZ: {
-            offset_t length = strlen(operand_list->identifier) + 1;
-            write_segment_memory((void *)operand_list->identifier, length);
-            incr_segment_offset(length);
+            int nullterm = '\0';
+            write_escaped_string(operand_list->identifier);
+            write_segment_memory((void *)&nullterm, 0x1);
+            incr_segment_offset(0x1);
             break;
         }
         case DIRECTIVE_SPACE: {

@@ -38,7 +38,7 @@ typedef enum { init_state, comma_accept, colon_accept, left_paren_accept,
                integer_state, integer_accept, hex_state, zero_state,
                character_state, character_accept, eof_accept, comment_state, 
                comment_accept, negative_state, string_state, string_accept, 
-               quote_state, escape_state, eol_accept, invalid_state } state_fsm;
+               quote_state, escape_state, eol_accept, invalid_state, string_escape } state_fsm;
 
 /* Reserved keyword table */
 struct reserved_entry reserved_table[] = {
@@ -547,8 +547,10 @@ state_fsm string_fsm(struct tokenizer *tokenizer) {
     switch(ch) {
         case '"':
             /* Ignore " character */
-            tokenizer->bufpos--;
+            --tokenizer->bufpos;
             return string_accept;
+        case '\\':
+            return string_escape;
         case EOF:
         case '\n':
             tungetc(ch, tokenizer);
@@ -575,6 +577,33 @@ state_fsm character_fsm(struct tokenizer *tokenizer) {
     }
 
     return invalid_state;
+}
+
+state_fsm string_escape_fsm(struct tokenizer *tokenizer) {
+    int ch = tgetc(tokenizer);
+
+    switch(ch) {
+        case 't':
+        case 'b':
+        case 'n':
+        case 'r':
+        case '0':
+        case 'a':
+        case 'f':
+        case 'e':
+        case 'v':
+        case '\'':
+        case '"':
+        case '?':
+        case '\\':
+            return string_state;
+        default:
+            tungetc(ch, tokenizer);
+            report_fsm(tokenizer, "Unrecognized escape character on line %ld, col %ld", tokenizer->lineno, tokenizer->colno);
+            return invalid_state;
+    }
+
+    return string_state;
 }
 
 state_fsm escape_fsm(struct tokenizer *tokenizer) {
@@ -715,14 +744,14 @@ token_t return_token(token_t token, struct tokenizer *tokenizer) {
                 if(*tokenizer->lexbuf == '-') {
                     tokenizer->attrval = value = strtoll(tokenizer->lexbuf + 1, NULL, 0);
                     tokenizer->attrval *= -1;
-                    if(value > 2147483648) {
+                    if(value > 0x80000000) {
                         report_fsm(tokenizer, "Integer literal '%s' cannot be represented with 32-bits on line %ld", tokenizer->lexbuf, tokenizer->lineno);
                         return TOK_INVALID;
                     }
                 }
                 else {
                     tokenizer->attrval = value = strtoll(tokenizer->lexbuf, NULL, 0);
-                    if(value > 4294967295) {
+                    if(value > 0xFFFFFFFF) {
                         report_fsm(tokenizer, "Integer literal '%s' cannot be represented with 32-bits on line %ld", tokenizer->lexbuf, tokenizer->lineno);
                         return TOK_INVALID;
                     }
@@ -843,6 +872,9 @@ token_t get_next_token(struct tokenizer *tokenizer) {
                 break;
             case quote_state:
                 next_state = quote_fsm(tokenizer);
+                break;
+            case string_escape:
+                next_state = string_escape_fsm(tokenizer);
                 break;
             case integer_accept:
             case character_accept:
