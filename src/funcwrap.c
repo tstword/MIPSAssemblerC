@@ -1,6 +1,9 @@
 #include "funcwrap.h"
 
 #include <string.h>
+#ifdef _WIN32
+#include <stdlib.h>
+#endif
 
 FILE *fopen_wrap(const char *filename, const char *mode) {
 #ifdef _WIN32
