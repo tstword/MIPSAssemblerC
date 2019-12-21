@@ -1,7 +1,7 @@
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * File: parser.c
+/**
+ * @file: parser.c
  *
- * Purpose: Responsible for parsing and verifying the sequence of tokens
+ * @purpose: Responsible for parsing and verifying the sequence of tokens
  * as a MIPS assembly program. The parser is implemented as a recursive-descent
  * parser, as a result the language is defined as a LL(1) grammer:
  *
@@ -30,7 +30,7 @@
  * 
  * @author: Bryan Rocha
  * @version: 1.0 (8/28/2019)
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 
 #include "assembler.h"
 
@@ -58,11 +58,11 @@ const offset_t SEGMENT_OFFSET_LIMIT[MAX_SEGMENTS] = {
     [SEGMENT_KTEXT] = 0x8FFFFFFF, [SEGMENT_KDATA] = 0xFFFEFFFF
 };
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: report_cfg
- * Purpose: Reports an error in the context-free grammar to stderr
+/**
+ * @function: report_cfg
+ * @purpose: Reports an error in the context-free grammar to stderr
  * @param fmt -> Format string
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 void report_cfg(const char *fmt, ...) {
     /* Routine to allow formatted printing similar to printf */
     va_list vargs;
@@ -97,13 +97,13 @@ void report_cfg(const char *fmt, ...) {
     free(buffer);
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: incr_segment_offset
- * Purpose: Increments the current segment's offset by the value specified in the
+/**
+ * @function: incr_segment_offset
+ * @purpose: Increments the current segment's offset by the value specified in the
  * argument. If the segment offset surpasses the limit then it will produce
  * an error message
  * @param offset -> The value to increment the segment offset by
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 void incr_segment_offset(offset_t offset) {
     offset_t next_offset = cfg_assembler->segment_offset[cfg_assembler->segment] + offset;
     if(next_offset > SEGMENT_OFFSET_LIMIT[cfg_assembler->segment]) {
@@ -115,13 +115,13 @@ void incr_segment_offset(offset_t offset) {
     cfg_assembler->segment_offset[cfg_assembler->segment] += offset;
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: align_segment_offset
- * Purpose: Aligns the current segment offset to be a multiple of 2^n. If
+/**
+ * @function: align_segment_offset
+ * @purpose: Aligns the current segment offset to be a multiple of 2^n. If
  * the current segment offset is already a multiple of 2^n then the offset
  * won't change
  * @param n -> The power of 2 to use to align the segment
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 void align_segment_offset(uint32_t n) {
     /* Check bounds for sll */
     if(n >= 31) return;
@@ -134,14 +134,14 @@ void align_segment_offset(uint32_t n) {
     }
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: write_segment_memory
- * Purpose: Writes the contents of the buffer into the current segment of
+/**
+ * @function: write_segment_memory
+ * @purpose: Writes the contents of the buffer into the current segment of
  * the assembler. The memory corresponding to the segment is allocated in 
  * chunks of 1024 bytes.
  * @param buf  -> The address of the data to write
- *        size -> The number of bytes to write
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ * @param size -> The number of bytes to write
+ **/
 void write_segment_memory(void *buf, size_t size) {
     segment_t segment = cfg_assembler->segment;
     offset_t buf_offset = cfg_assembler->segment_offset[segment] - SEGMENT_OFFSET_BASE[segment];
@@ -167,24 +167,24 @@ void write_segment_memory(void *buf, size_t size) {
     }
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: write_instruction
- * Purpose: Writes the instruction to the current segment and increments the
+/**
+ * @function: write_instruction
+ * @purpose: Writes the instruction to the current segment and increments the
  * offset by the instruction size
  * @param instruction -> The instruction to write 
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 void write_instruction(instruction_t instruction) {
     write_segment_memory((void *)&instruction, 0x4);
     incr_segment_offset(0x4);
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: write_escaped_string
- * Purpose: Writes the provided string to the current segment. The function
+/**
+ * @function: write_escaped_string
+ * @purpose: Writes the provided string to the current segment. The function
  * handles escaped characters as well. (NOTE: Each escape sequence contains two
  * characters, since it is accepted by the FSM in the tokenizer).
  * @param string -> The string to write
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 void write_escaped_string(char *string) {
     char ch;
     while((ch = *string++) != '\0') {
@@ -236,25 +236,25 @@ void write_escaped_string(char *string) {
     }
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: get_branch_offset
- * Purpose: Computes the branch offset of the symbol relative to the current 
+/**
+ * @function: get_branch_offset
+ * @purpose: Computes the branch offset of the symbol relative to the current 
  * segment offset
  * @param entry -> Address of the entry in symbol table
  * @return The branch offset of the symbol relative to the current offset
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 offset_t get_branch_offset(struct symbol_table_entry *entry) {
     return (entry->offset - (cfg_assembler->segment_offset[cfg_assembler->segment] + 4)) >> 2;
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: match_cfg
- * Purpose: Checks if the most recent token returned by the tokenizer matches
+/**
+ * @function: match_cfg
+ * @purpose: Checks if the most recent token returned by the tokenizer matches
  * the token passed to the function. On a non-match, it reports an error and fails
  * the parser
  * @param token -> Token to match
  * @return 1 if token matches, 0 otherwise
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 int match_cfg(token_t token) {
     if(cfg_assembler->lookahead == token) {
         cfg_assembler->lineno = cfg_assembler->tokenizer->lineno;
@@ -268,11 +268,11 @@ int match_cfg(token_t token) {
     return 1;
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: end_line_cfg
- * Purpose: Checks and matches for the end of line token, if fails reports
+/**
+ * @function: end_line_cfg
+ * @purpose: Checks and matches for the end of line token, if fails reports
  * specific error to the report_cfg function
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 void end_line_cfg() {
     switch(cfg_assembler->lookahead) {
         case TOK_EOL:
@@ -286,12 +286,12 @@ void end_line_cfg() {
     }
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: label_cfg
- * Purpose: Attempts to match the non-terminal for label. If matched, the label
+/**
+ * @function: label_cfg
+ * @purpose: Attempts to match the non-terminal for label. If matched, the label
  * is inserted into the symbol table. Otherwise, an error is reported to the 
  * function report_cfg
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 void label_cfg() {
     if(cfg_assembler->lookahead == TOK_IDENTIFIER) {
         char *id = strdup_wrap(cfg_assembler->tokenizer->lexbuf);
@@ -341,12 +341,12 @@ void label_cfg() {
     }
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: operand_cfg
- * Purpose: Attempts to match the non-terminal for operand. Failure to match
+/**
+ * @function: operand_cfg
+ * @purpose: Attempts to match the non-terminal for operand. Failure to match
  * results in reporting the error to report_cfg.
  * @return Address of the operand_node based on operand matched, otherwise NULL
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 struct operand_node *operand_cfg() {
     struct operand_node *node = NULL;
 
@@ -428,12 +428,12 @@ struct operand_node *operand_cfg() {
     return node;
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: operand_list_cfg
- * Purpose: Attempts to match the non-terminal for operand_list. Failure to match
+/**
+ * @function: operand_list_cfg
+ * @purpose: Attempts to match the non-terminal for operand_list. Failure to match
  * results in reporting the error to report_cfg.
  * @return Address of the first operand_node in the operand list, otherwise NULL
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 struct operand_node *operand_list_cfg() {
     struct operand_node *root = NULL;
     struct operand_node *current_operand = NULL;
@@ -474,14 +474,14 @@ struct operand_node *operand_list_cfg() {
     return root;
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: verify_operand_list
- * Purpose: Given an entry in the reserved table, it checks the operand list
+/**
+ * @function: verify_operand_list
+ * @purpose: Given an entry in the reserved table, it checks the operand list
  * to see if it matches the corresponding operand format.
  * @param res_entry    -> Address of the entry in the reserved table
- *        operand_list -> Address of the start of the operand list
+ * @param operand_list -> Address of the start of the operand list
  * @return 1 if operand list matches operand format, otherwise 0
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 int verify_operand_list(struct reserved_entry *res_entry, struct operand_node *operand_list) {
     /* Check if reserved_entry is valid */
     if(res_entry->token != TOK_MNEMONIC && res_entry->token != TOK_DIRECTIVE) return 0;
@@ -542,11 +542,11 @@ int verify_operand_list(struct reserved_entry *res_entry, struct operand_node *o
     return 1;
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: destroy_instruction
- * Purpose: Frees the data allocated for the instruction node
+/**
+ * @function: destroy_instruction
+ * @purpose: Frees the data allocated for the instruction node
  * @param instr -> Address of the instruction node structure
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 void destroy_instruction(struct instruction_node *instr) {
     /* Free operands */
     struct operand_node *op_node = instr->operand_list;
@@ -559,12 +559,12 @@ void destroy_instruction(struct instruction_node *instr) {
     free(instr);
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: assemble_psuedo_instruction
- * Purpose: Assembles psuedo instructions
+/**
+ * @function: assemble_psuedo_instruction
+ * @purpose: Assembles psuedo instructions
  * @param instr -> Address of the instruction node structure
  * @return 1 if the instruction is properly assembled, 0 otherwise
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 int assemble_psuedo_instruction(struct instruction_node *instr) {
     struct opcode_entry *entry = (struct opcode_entry *)instr->mnemonic->attrptr;
     
@@ -909,12 +909,12 @@ int assemble_psuedo_instruction(struct instruction_node *instr) {
     return assemble_status;
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: assemble_funct_instruction
- * Purpose: Assembles the instruction based on the funct bits
+/**
+ * @function: assemble_funct_instruction
+ * @purpose: Assembles the instruction based on the funct bits
  * @param instr -> Address of the instruction node structure
  * @return 1 if the instruction is properly assembled, 0 otherwise
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 int assemble_funct_instruction(struct instruction_node *instr) {
     struct opcode_entry *entry = (struct opcode_entry *)instr->mnemonic->attrptr;
 
@@ -979,12 +979,12 @@ int assemble_funct_instruction(struct instruction_node *instr) {
     return 1;
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: assemble_opcode_instruction
- * Purpose: Assembles the instruction based on the opcode bits
+/**
+ * @function: assemble_opcode_instruction
+ * @purpose: Assembles the instruction based on the opcode bits
  * @param instr -> Address of the instruction node structure
  * @return 1 if the instruction is properly assembled, 0 otherwise
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 int assemble_opcode_instruction(struct instruction_node *instr) {
     struct opcode_entry *entry = (struct opcode_entry *)instr->mnemonic->attrptr;
     
@@ -1146,14 +1146,14 @@ int assemble_opcode_instruction(struct instruction_node *instr) {
     return assemble_status;
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: assemble_instruction
- * Purpose: Checks the instruction_node to see if a proper instruction was 
+/**
+ * @function: assemble_instruction
+ * @purpose: Checks the instruction_node to see if a proper instruction was 
  * recognized based on the opcode table entry for the mnemonic. If an invalid
  * instruction is encountered, it will report the error to report_cfg.
  * @param instr -> Address of the instruction node structure
  * @return 1 if the instruction is properly assembled, 0 otherwise
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 int assemble_instruction(struct instruction_node *instr) {
     if(instr == NULL || instr->mnemonic == NULL) return 0;
 
@@ -1187,15 +1187,15 @@ int assemble_instruction(struct instruction_node *instr) {
     return assemble_status;
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: check_directive
- * Purpose: Checks the directive recognized from the CFG. Ensures that the
+/**
+ * @function: check_directive
+ * @purpose: Checks the directive recognized from the CFG. Ensures that the
  * operands recognized are of the correct format. If successfully recognized,
  * the function attempts to execute the directive.
  * @param directive    -> Address of the entry in the reserved table
- *        operand_list -> Address of the first operand in the operand list
+ * @param operand_list -> Address of the first operand in the operand list
  * @return 1 if the directive is properly assembled, 0 otherwise
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 int check_directive(struct instruction_node *instr) {
     struct reserved_entry *directive = instr->mnemonic;
     struct operand_node *operand_list = instr->operand_list;
@@ -1342,12 +1342,12 @@ int check_directive(struct instruction_node *instr) {
     return assemble_status;
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: instruction_cfg
- * Purpose: Attempts to match the non-terminal for instruction. If failed to match
+/**
+ * @function: instruction_cfg
+ * @purpose: Attempts to match the non-terminal for instruction. If failed to match
  * reports error to report_cfg
  * @return Address of the instruction_node if valid, otherwise NULL
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 struct instruction_node *instruction_cfg() {
     struct instruction_node *node = NULL;
 
@@ -1426,12 +1426,12 @@ struct instruction_node *instruction_cfg() {
     return node;
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: instruction_list_cfg
- * Purpose: Attempts to match the non-terminal for instruction_list. Failure to match
+/**
+ * @function: instruction_list_cfg
+ * @purpose: Attempts to match the non-terminal for instruction_list. Failure to match
  * results in reporting the error to report_cfg
  * @return Address of the first instruction_node in the instruction list, otherwise NULL
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 void instruction_list_cfg() {  
     while(1) {  
         while(cfg_assembler->lookahead == TOK_NULL) {
@@ -1455,11 +1455,11 @@ void instruction_list_cfg() {
     }
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: program_cfg
- * Purpose: Start symbol the the LL(1) context-free grammer
+/**
+ * @function: program_cfg
+ * @purpose: Start symbol the the LL(1) context-free grammer
  * @return Address of the allocated program_node
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 void program_cfg(struct assembler *assembler) {
     cfg_assembler = assembler;
 
@@ -1499,12 +1499,12 @@ void program_cfg(struct assembler *assembler) {
     }
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: destroy_tokenizer_list
- * Purpose: Frees the data allocated for the tokenizer linked list used by
+/**
+ * @function: destroy_tokenizer_list
+ * @purpose: Frees the data allocated for the tokenizer linked list used by
  * the assembler
  * @param assembler -> Address of the assembler
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 void destroy_tokenizer_list(struct assembler *assembler) {
     struct list_node *node = assembler->tokenizer_list->front;
     while(node != NULL) {
@@ -1514,11 +1514,11 @@ void destroy_tokenizer_list(struct assembler *assembler) {
     delete_linked_list(&(assembler->tokenizer_list), LN_VSTATIC);
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: create_parser
- * Purpose: Allocates and initializes the parser structure 
+/**
+ * @function: create_parser
+ * @purpose: Allocates and initializes the parser structure 
  * @return Pointer to the allocated parser structure
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 struct assembler *create_assembler() {
     struct assembler *assembler = (struct assembler *)malloc(sizeof(struct assembler));
 
@@ -1543,13 +1543,15 @@ struct assembler *create_assembler() {
     return assembler;
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: execute_parser
- * Purpose: Starts the parsing process. Sets up the lookahead token
+/**
+ * @function: execute_parser
+ * @purpose: Starts the parsing process. Sets up the lookahead token
  * required for the LL(1) grammer and verifies symbol table after execution. 
  * @param assembler -> Address of the assembler structure
+ * @param files     -> Array of filenames to open
+ * @param size      -> The size of the files array
  * @return ASSEMBLER_STATUS_OK if no errors, otherwise ASSEMBLER_STATUS_FAIL
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 astatus_t execute_assembler(struct assembler *assembler, const char **files, size_t size) {
     /* Setup Tokenizer List */
     assembler->tokenizer_list = create_list();
@@ -1628,12 +1630,12 @@ astatus_t execute_assembler(struct assembler *assembler, const char **files, siz
     return assembler->status;
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: destroy_symbol
- * Purpose: Deallocates all the dynamically allocated memory used for the
+/**
+ * @function: destroy_symbol
+ * @purpose: Deallocates all the dynamically allocated memory used for the
  * assembler structure
  * @param assembler -> Reference to the address of the assembler structure
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 void destroy_assembler(struct assembler **assembler) {
     /* Free all segment memory */
     for(segment_t segment = 0; segment < MAX_SEGMENTS; ++segment) {

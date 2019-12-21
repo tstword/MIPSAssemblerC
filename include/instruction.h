@@ -1,7 +1,15 @@
+/**
+ * @file: instruction.h
+ *
+ * @purpose: Contains the necessary macros used for assembling instructions.
+ * The header also defines the instruction_t type, used by the assembler to create 32-bit instructions.
+ *
+ * @author: Bryan Rocha
+ * @version: 1.0 (11/2/2019)
+ **/
+
 #ifndef INSTRUCTION_H
 #define INSTRUCTION_H
-
-#define MAX_INSTRUCTIONS 4
 
 typedef uint32_t instruction_t;
 

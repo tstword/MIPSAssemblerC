@@ -1,6 +1,7 @@
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * File: opcode.c
- * Purpose: Defines the opcode table which maps mnemonics to their
+/**
+ * @file: opcode.c
+ *
+ * @purpose: Defines the opcode table which maps mnemonics to their
  * operand format, instruction type, and opcode / funct.
  * 
  * Each entry in the opcode table corresponds to their MNEMONIC macro
@@ -11,7 +12,7 @@
  *
  * @author: Bryan Rocha
  * @version: 1.0 (2/3/2019)
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 
 #include "opcode.h"
 

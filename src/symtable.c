@@ -1,7 +1,7 @@
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * File: symtable.c
+/**
+ * @file: symtable.c
  *
- * Purpose: Defines the necessary functions to construct a symbol table
+ * @purpose: Defines the necessary functions to construct a symbol table
  * The symbol table is constructed as a hash table with a load of 70% before
  * percolating. The operation run times are listed below:
  *
@@ -18,7 +18,7 @@
  *
  * @author: Bryan Rocha
  * @version: 1.0 (8/28/2019)
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 
 #include "symtable.h"
 
@@ -34,12 +34,12 @@ const char *segment_string[MAX_SEGMENTS] = {
     [SEGMENT_KTEXT] = "KTEXT", [SEGMENT_KDATA] = "KDATA",
 };
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: djb2hash
- * Purpose: Computes a hash value from the string
+/**
+ * @function: djb2hash
+ * @purpose: Computes a hash value from the string
  * @param str -> String to hash
  * @return Returns the hashed value
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 size_t djb2hash(const char *str) {
     const unsigned char *key = (const unsigned char *)str;
     size_t hash = 5381;
@@ -51,11 +51,11 @@ size_t djb2hash(const char *str) {
     return hash;
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: create_symbol_table
- * Purpose: Allocates and initializes symbol table structure
+/**
+ * @function: create_symbol_table
+ * @purpose: Allocates and initializes symbol table structure
  * @return Address of the allocated symbol table structure
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 struct symbol_table *create_symbol_table() {
     struct symbol_table *symtab = (struct symbol_table *)malloc(sizeof(struct symbol_table));
     
@@ -66,13 +66,13 @@ struct symbol_table *create_symbol_table() {
     return symtab;
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: insert_at_index_st
- * Purpose: Inserts new symbol_table entry based on bucket index
+/**
+ * @function: insert_at_index_st
+ * @purpose: Inserts new symbol_table entry based on bucket index
  * @param symtab -> Address of the symbol table
- *        index  -> Index of the bucket to insert at
- *        entry  -> Symbol table entry to insert
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ * @param index  -> Index of the bucket to insert at
+ * @param entry  -> Symbol table entry to insert
+ **/
 void insert_at_index_st(struct symbol_table *symtab, size_t index, struct symbol_table_entry *entry) {
     struct symbol_table_entry *head = symtab->buckets[index];
     ++symtab->length;
@@ -84,12 +84,12 @@ void insert_at_index_st(struct symbol_table *symtab, size_t index, struct symbol
     head->next = entry;
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: percolate_symbol_table
- * Purpose: Expands bucket size of the symbol table and moves all entries over
+/**
+ * @function: percolate_symbol_table
+ * @purpose: Expands bucket size of the symbol table and moves all entries over
  * if the load facter is at least 70%
  * @param symtab -> Address of the symbol table
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 void percolate_symbol_table(struct symbol_table *symtab) {
     float symtab_load = ((float)symtab->length) / symtab->bucket_size;
     
@@ -120,14 +120,14 @@ void percolate_symbol_table(struct symbol_table *symtab) {
     }
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: insert_symbol_table
- * Purpose: Inserts new symbol into the symbol table and returns the address of 
+/**
+ * @function: insert_symbol_table
+ * @purpose: Inserts new symbol into the symbol table and returns the address of 
  * the new entry. Note that a new entry is by default an UNDEFINED symbol.
  * @param symtab -> Address of the symbol table
- *        key    -> Symbol name to insert
+ * @param key    -> Symbol name to insert
  * @return Address of the new entry
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 struct symbol_table_entry *insert_symbol_table(struct symbol_table *symtab, const char *key) {
     struct symbol_table_entry *item = (struct symbol_table_entry *)malloc(sizeof(struct symbol_table_entry));
     
@@ -149,13 +149,13 @@ struct symbol_table_entry *insert_symbol_table(struct symbol_table *symtab, cons
     return item;
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: get_symbol_table
- * Purpose: Search symbol table for a symbol and return the corresponding entry
+/**
+ * @function: get_symbol_table
+ * @purpose: Search symbol table for a symbol and return the corresponding entry
  * @param symtab -> Address of the symbol table
- *        key    -> Name of the symbol to search
+ * @param key    -> Name of the symbol to search
  * @return Address of the entry if found, otherwise NULL
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 struct symbol_table_entry *get_symbol_table(struct symbol_table *symtab, const char *key) {
     size_t index = djb2hash(key) % symtab->bucket_size;
     struct symbol_table_entry *head = symtab->buckets[index];
@@ -168,11 +168,11 @@ struct symbol_table_entry *get_symbol_table(struct symbol_table *symtab, const c
     return NULL;
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: destroy_symbol_table
- * Purpose: Deallocates symbol table and all of its entries
+/**
+ * @function: destroy_symbol_table
+ * @purpose: Deallocates symbol table and all of its entries
  * @param symtabp -> Reference to the address of the symbol table
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 void destroy_symbol_table(struct symbol_table **symtabp) {
     struct symbol_table *symtab = *symtabp;
 
@@ -200,12 +200,12 @@ void destroy_symbol_table(struct symbol_table **symtabp) {
 
 #ifdef DEBUG
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: print_symbol_table
- * Purpose: Used for debugging puproses. Prints the entries in the symbol
+/**
+ * @function: print_symbol_table
+ * @purpose: Used for debugging puproses. Prints the entries in the symbol
  * table and their corresponding attributes.
  * @param symtab -> Address of the symbol table
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 void print_symbol_table(struct symbol_table *symtab) {
     const char *symtab_status_str[3] = { "UNDEFINED", "DEFINED", "DOUBLY" };
 

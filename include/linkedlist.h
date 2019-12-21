@@ -1,13 +1,15 @@
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * File: linkedlist.h
- * Purpose: C implementation of LinkedList data structure.
+/**
+ * @file: linkedlist.h
+ *
+ * @purpose: C implementation of LinkedList data structure.
  * The following two macros are define here:
  * 		LN_VSTATIC : Values in ListNode do not need to be free'd
  *  	LN_VDYNAMIC: Values in ListNode need to be free'd
  * These macros are passed when deleting LinkedLists
+ *
  * @author: Bryan Rocha
  * @version: 1.0 (2/3/2019)
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 
 #ifndef LINKEDLIST_H
 #define LINKEDLIST_H

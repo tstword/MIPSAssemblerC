@@ -1,7 +1,7 @@
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * File: tokenizer.h
+/**
+ * @file: tokenizer.h
  *
- * Purpose: Converts assembly file from source into a sequence of tokens for
+ * @purpose: Converts assembly file from source into a sequence of tokens for
  * the assembler / parser to use. 
  *
  * The tokenizer is not designed to convert the whole file into tokens and push them
@@ -29,7 +29,7 @@
  *
  * @author: Bryan Rocha
  * @version: 1.0 (8/28/2019)
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 
 #ifndef TOKENIZER_H
 #define TOKENIZER_H

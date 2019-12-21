@@ -1,19 +1,21 @@
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * File: linkedlist.c
- * Purpose: C implementation of LinkedList data structure.
+/**
+ * @file: linkedlist.c
+ *
+ * @purpose: C implementation of LinkedList data structure.
+ *
  * @author: Bryan Rocha
  * @version: 1.0 (2/3/2019)
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 
 #include "linkedlist.h"
 
 #include <stdlib.h>
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: create_list
- * Purpose: Dynamically allocates a LinkedList and returns the address
+/**
+ * @function: create_list
+ * @purpose: Dynamically allocates a LinkedList and returns the address
  * @return Address of LinkedList structure if successful, otherwise NULL.
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 struct linked_list *create_list()
 {
 	struct linked_list *list = (struct linked_list *)malloc(sizeof(struct linked_list));
@@ -21,13 +23,13 @@ struct linked_list *create_list()
 	return list;
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+/**
  * @function: insert_front
- * Purpose: Appends new ListNode to the front of the LinkedList.
+ * @purpose: Appends new ListNode to the front of the LinkedList.
  * @param list  -> Pointer to LinkedList structure.
  * 		  value -> The data to insert into the LinkedList
  * @comments: Executes in O(1) time
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 void insert_front(struct linked_list *list, void *value)
 {
 	struct list_node *node = (struct list_node *)malloc(sizeof(struct list_node));
@@ -42,13 +44,13 @@ void insert_front(struct linked_list *list, void *value)
 	}
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: insert_rear
- * Purpose: Appends new ListNode to the end of the LinkedList.
+/**
+ * @function: insert_rear
+ * @purpose: Appends new ListNode to the end of the LinkedList.
  * @param list  -> Pointer to LinkedList structure.
  *		  value -> The data to insert into the LinkedList
- * @additional comments: Executes in O(1) time
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ * @comments: Executes in O(1) time
+ **/
 void insert_rear(struct linked_list *list, void *value)
 {
 	struct list_node *node = (struct list_node *)malloc(sizeof(struct list_node));
@@ -66,14 +68,14 @@ void insert_rear(struct linked_list *list, void *value)
 	}
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: remove_front
- * Purpose: Removes the first ListNode in the LinkedList
+/**
+ * @function: remove_front
+ * @purpose: Removes the first ListNode in the LinkedList
  * @param list  -> Pointer to LinkedList structure.
  *		  mode  -> LN_VDYNAMIC: Frees the values inside the ListNodes
  *				   LN_VSTATIC:  Does not free the values inside the ListNodes
- * @additional comments: Executes in O(1) time
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ * @comments: Executes in O(1) time
+ **/
 void remove_front(struct linked_list *list, short mode) {
 	struct list_node *front = list->front;
 	
@@ -90,13 +92,13 @@ void remove_front(struct linked_list *list, short mode) {
 	free(front);
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: remove_from_list
- * Purpose: Removes the ListNode containing the unique value
+/**
+ * @function: remove_from_list
+ * @purpose: Removes the ListNode containing the unique value
  * @param list  -> Pointer to LinkedList structure.
  *		  value -> Unique value to be removed
- * @additional comments: Executes in O(n) time
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ * @comments: Executes in O(n) time
+ **/
 void remove_from_list(struct linked_list *list, void *value)
 {
     struct list_node *curr = list->front;
@@ -122,14 +124,14 @@ void remove_from_list(struct linked_list *list, void *value)
     }
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: delete_linked_list
- * Purpose: Frees the LinkedList structure along with the ListNode structures created.
+/**
+ * @function: delete_linked_list
+ * @purpose: Frees the LinkedList structure along with the ListNode structures created.
  * @param lp: Pointer to the address of the LinkedList structure
  * 		  mode: LN_VDYNAMIC -> Frees the values inside the ListNodes
  *				LN_VSTATIC  -> Does not free the values inside the ListNodes
- * @additional comments: Executes in O(n) time
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ * @comments: Executes in O(n) time
+ **/
 void delete_linked_list(struct linked_list **lp, short mode)
 {
 	if(*lp == NULL) return;
@@ -140,14 +142,14 @@ void delete_linked_list(struct linked_list **lp, short mode)
 	*lp = NULL;
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Function: delete_list
- * Purpose: Deletes ListNodes in an iterative fashion.
+/**
+ * @function: delete_list
+ * @purpose: Deletes ListNodes in an iterative fashion.
  * @param listNode: Address of the ListNode structure
  * 		  mode: LN_VDYNAMIC -> Frees the values inside the ListNodes
  *				LN_VSTATIC  -> Does not free the values inside the ListNodes
- * @additional comments: Executes in O(n) time
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ * @comments: Executes in O(n) time
+ **/
 void delete_list(struct list_node *listnode, short mode)
 {
 	struct list_node *node = listnode;

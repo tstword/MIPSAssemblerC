@@ -1,7 +1,7 @@
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * File: parser.h
+/**
+ * @file: parser.h
  *
- * Purpose: Responsible for parsing and verifying the sequence of tokens
+ * @purpose: Responsible for parsing and verifying the sequence of tokens
  * as a MIPS assembly program. The parser is implemented as a recursive-descent
  * parser, as a result the language is defined as a LL(1) grammer:
  *
@@ -29,7 +29,7 @@
  * 
  * @author: Bryan Rocha
  * @version: 1.0 (8/28/2019)
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 
 #ifndef PARSER_H
 #define PARSER_H

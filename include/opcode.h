@@ -1,9 +1,9 @@
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * File: opcode.h
+/**
+ * @file: opcode.h
  *
- * Purpose: Used to define the neccessary macros and structures
+ * @purpose: Used to define the neccessary macros and structures
  * for the opcode table which maps mnemonics into their corresponding
- * instruction. 
+ * instruction.
  * 
  * There are two types of instructions that can be defined here:
  *      - DEFAULT: Core instruction, requires 4 bytes
@@ -13,7 +13,7 @@
  *
  * @author: Bryan Rocha
  * @version: 1.0 (8/28/2019)
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ **/
 
 #ifndef MNEMONIC_H
 #define MNEMONIC_H
