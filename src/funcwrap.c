@@ -18,8 +18,9 @@ FILE *fopen_wrap(const char *filename, const char *mode) {
 
 char *strdup_wrap(const char *src) {
 #ifdef _WIN32
-    char *buffer = (char *)malloc(strlen(src) + 1);
-    strcpy(buffer, src);
+    size_t bufsize = strlen(src) + 1;
+    char *buffer = (char *)malloc(bufsize);
+    memcpy((void *)buffer, (const void *)src, bufsize);
     return buffer;
 #else
     return strdup(src);
