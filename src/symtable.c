@@ -26,6 +26,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "funcwrap.h"
+
 /* Segment string array */
 const char *segment_string[MAX_SEGMENTS] = { 
     [SEGMENT_TEXT]  = "TEXT" , [SEGMENT_DATA]  = "DATA" ,
@@ -129,7 +131,7 @@ void percolate_symbol_table(struct symbol_table *symtab) {
 struct symbol_table_entry *insert_symbol_table(struct symbol_table *symtab, const char *key) {
     struct symbol_table_entry *item = (struct symbol_table_entry *)malloc(sizeof(struct symbol_table_entry));
     
-    item->key = strdup(key);
+    item->key = strdup_wrap(key);
     item->status = SYMBOL_UNDEFINED;
     item->offset = 0x00;
     item->segment = SEGMENT_TEXT; /* Default is SEGMENT_TEXT */

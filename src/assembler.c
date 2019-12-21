@@ -54,6 +54,7 @@
 #include <ctype.h>
 
 #include "instruction.h"
+#include "funcwrap.h"
 
 /* Global variable used for parsing grammar */
 struct assembler *cfg_assembler = NULL;
@@ -259,7 +260,7 @@ void end_line_cfg() {
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 void label_cfg() {
     if(cfg_assembler->lookahead == TOK_IDENTIFIER) {
-        char *id = strdup(cfg_assembler->tokenizer->lexbuf);
+        char *id = strdup_wrap(cfg_assembler->tokenizer->lexbuf);
 
         match_cfg(TOK_IDENTIFIER);
         
@@ -329,7 +330,7 @@ struct operand_node *operand_cfg() {
             break;
         }
         case TOK_IDENTIFIER: {
-            char *id = strdup(cfg_assembler->tokenizer->lexbuf);
+            char *id = strdup_wrap(cfg_assembler->tokenizer->lexbuf);
             match_cfg(TOK_IDENTIFIER);
             
             node = (struct operand_node *)malloc(sizeof(struct operand_node));
@@ -340,7 +341,7 @@ struct operand_node *operand_cfg() {
             break;
         }
         case TOK_STRING: {
-            char *id = strdup(cfg_assembler->tokenizer->lexbuf);
+            char *id = strdup_wrap(cfg_assembler->tokenizer->lexbuf);
             match_cfg(TOK_STRING);
             
             node = (struct operand_node *)malloc(sizeof(struct operand_node));

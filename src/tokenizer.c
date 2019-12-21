@@ -24,6 +24,7 @@
 #include <string.h>
 #include <limits.h>
 
+#include "funcwrap.h"
 #include "opcode.h"
 
 #ifdef _WIN64
@@ -782,7 +783,7 @@ struct tokenizer *create_tokenizer(const char *file) {
     if(tokenizer == NULL) { return NULL; }
 
     /* Open file for reading */
-    tokenizer->fstream = fopen(file, "r");
+    tokenizer->fstream = fopen_wrap(file, "r");
     
     /* Failed to open file */
     if(tokenizer->fstream == NULL) { 

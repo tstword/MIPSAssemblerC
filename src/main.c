@@ -9,13 +9,14 @@
 
 #include "assembler.h"
 #include "mipsfhdr.h"
+#include "funcwrap.h"
 
 void write_object_file(struct assembler *assembler, const char *file) {
     struct MIPS_file_header file_hdr;
     size_t nbytes;
     FILE *fp;
 
-    if((fp = fopen(file, "wb+")) == NULL) {
+    if((fp = fopen_wrap(file, "wb+")) == NULL) {
         fprintf(stderr, "Failed to open output file '%s: Error: ", file);
         perror(NULL);
         destroy_assembler(&assembler);
@@ -87,7 +88,7 @@ void write_object_file(struct assembler *assembler, const char *file) {
 
 void dump_segment(struct assembler *assembler, segment_t segment, const char *file) {
     FILE *fp;
-    if((fp = fopen(file, "wb+")) == NULL) {
+    if((fp = fopen_wrap(file, "wb+")) == NULL) {
         fprintf(stderr, "Failed to open output file '%s': Error: ", file);
         perror(NULL);
         destroy_assembler(&assembler);
@@ -185,7 +186,7 @@ int main(int argc, char *argv[]) {
                         break;
                     case 't':
                         if(i + 1 == argc || argv[i + 1][0] == '-') {
-                            fprintf(stderr, "%s: option requires an argument -- 'o'\n", argv[0]);
+                            fprintf(stderr, "%s: option requires an argument -- 't'\n", argv[0]);
                             return EXIT_FAILURE;
                         }
                         text_file = argv[i + 1];
@@ -193,7 +194,7 @@ int main(int argc, char *argv[]) {
                         break;
                     case 'd':
                         if(i + 1 == argc || argv[i + 1][0] == '-') {
-                            fprintf(stderr, "%s: option requires an argument -- 'o'\n", argv[0]);
+                            fprintf(stderr, "%s: option requires an argument -- 'd'\n", argv[0]);
                             return EXIT_FAILURE;
                         }
                         data_file = argv[i + 1];
