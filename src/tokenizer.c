@@ -228,8 +228,15 @@ int tgetc(struct tokenizer *tokenizer) {
 
     /* Adjust tokenizer buffer if necessary */
     if(tokenizer->bufpos >= tokenizer->bufsize) {
+        char *realloc_ptr = (char *)realloc(tokenizer->lexbuf, tokenizer->bufsize << 1);
+        
+        if(realloc_ptr == NULL) {
+            perror("CRITICAL ERROR: Failed to allocated more memory for tokenizer lexical buffer: ");
+            exit(EXIT_FAILURE);
+        }
+        
         tokenizer->bufsize <<= 1;
-        tokenizer->lexbuf = (char *)realloc(tokenizer->lexbuf, tokenizer->bufsize);
+        tokenizer->lexbuf = realloc_ptr;
     }
 
     tokenizer->lexbuf[tokenizer->bufpos++] = ch;
@@ -277,8 +284,15 @@ void report_fsm(struct tokenizer *tokenizer, const char *fmt, ...) {
     va_end(vargs);
 
     if(bufsize > tokenizer->errsize) {
+        char *realloc_ptr = (char *)realloc(tokenizer->errmsg, bufsize);
+
+        if(realloc_ptr == NULL) {
+            perror("CRITICAL ERROR: Failed to allocated more memory for tokenizer error buffer: ");
+            exit(EXIT_FAILURE);
+        }
+
         tokenizer->errsize = bufsize;
-        tokenizer->errmsg = (char *)realloc(tokenizer->errmsg, bufsize);
+        tokenizer->errmsg = realloc_ptr;
     }
 
     va_start(vargs, fmt);

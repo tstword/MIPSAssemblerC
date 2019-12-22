@@ -45,6 +45,7 @@ char *strdup_wrap(const char *src) {
 #ifdef _WIN32
     size_t bufsize = strlen(src) + 1;
     char *buffer = (char *)malloc(bufsize);
+    if(buffer == NULL) return NULL;
     memcpy((void *)buffer, (const void *)src, bufsize);
     return buffer;
 #else

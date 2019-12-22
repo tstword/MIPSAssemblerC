@@ -76,6 +76,11 @@ void report_cfg(const char *fmt, ...) {
 
         buffer = (char *)malloc(bufsize * sizeof(char));
 
+        if(buffer == NULL) {
+            perror("CRITICAL ERROR: Failed to allocate memory for report_cfg buffer: ");
+            exit(EXIT_FAILURE);
+        }
+
         va_start(vargs, fmt);
         vsnprintf(buffer, bufsize, fmt, vargs);
         va_end(vargs);
@@ -106,12 +111,15 @@ void report_cfg(const char *fmt, ...) {
  **/
 void incr_segment_offset(offset_t offset) {
     offset_t next_offset = cfg_assembler->segment_offset[cfg_assembler->segment] + offset;
+    
     if(next_offset > SEGMENT_OFFSET_LIMIT[cfg_assembler->segment]) {
         fprintf(stderr, "Memory Error: Segment '%s' exceeded limit. Base: 0x%08X, Offset: 0x%08X, Limit: 0x%08X\n", 
                 segment_string[cfg_assembler->segment], SEGMENT_OFFSET_BASE[cfg_assembler->segment], 
                 next_offset, SEGMENT_OFFSET_LIMIT[cfg_assembler->segment]);
+        
         cfg_assembler->status = ASSEMBLER_STATUS_FAIL;
     }
+    
     cfg_assembler->segment_offset[cfg_assembler->segment] += offset;
 }
 
@@ -148,16 +156,20 @@ void write_segment_memory(void *buf, size_t size) {
     offset_t next_offset = buf_offset + size;
     
     if(next_offset > cfg_assembler->segment_memory_size[segment]) {
-        size_t mem_offset = cfg_assembler->segment_memory_size[segment];
-        cfg_assembler->segment_memory_size[segment] += 1024;
-        cfg_assembler->segment_memory[segment] = (void *)realloc(cfg_assembler->segment_memory[segment], cfg_assembler->segment_memory_size[segment]);
-        memset((char *)cfg_assembler->segment_memory[segment] + mem_offset, 0, 1024);
-        if(cfg_assembler->segment_memory[segment] == NULL) {
-            perror("Failed to allocate memory for segment: ");
+        size_t mem_size = cfg_assembler->segment_memory_size[segment];
+        void *realloc_ptr = (void *)realloc(cfg_assembler->segment_memory[segment], 
+                                    cfg_assembler->segment_memory_size[segment] + 1024);
+
+        if(realloc_ptr == NULL) {
+            perror("CRITICAL ERROR: Failed to reallocate memory for segment: ");
             cfg_assembler->status = ASSEMBLER_STATUS_FAIL;
             return;
         }
-    
+
+        cfg_assembler->segment_memory_size[segment] += 1024;
+        cfg_assembler->segment_memory[segment] = realloc_ptr;
+
+        memset((char *)cfg_assembler->segment_memory[segment] + mem_size, 0, 1024);
     }
     
     memcpy((char *)cfg_assembler->segment_memory[segment] + buf_offset, buf, size);
@@ -356,6 +368,12 @@ struct operand_node *operand_cfg() {
             match_cfg(TOK_REGISTER);
             
             node = (struct operand_node *)malloc(sizeof(struct operand_node));
+            
+            if(node == NULL) {
+                perror("CRITICAL ERROR: Failed to allocate memory for operand node: ");
+                exit(EXIT_FAILURE);
+            }
+            
             node->operand = OPERAND_REGISTER;
             node->identifier = NULL;
             node->value.reg = value;
@@ -368,6 +386,12 @@ struct operand_node *operand_cfg() {
             match_cfg(TOK_IDENTIFIER);
             
             node = (struct operand_node *)malloc(sizeof(struct operand_node));
+
+            if(node == NULL) {
+                perror("CRITICAL ERROR: Failed to allocate memory for operand node: ");
+                exit(EXIT_FAILURE);
+            }
+
             node->operand = OPERAND_LABEL;
             node->identifier = id;
             node->next = NULL;
@@ -379,6 +403,12 @@ struct operand_node *operand_cfg() {
             match_cfg(TOK_STRING);
             
             node = (struct operand_node *)malloc(sizeof(struct operand_node));
+
+            if(node == NULL) {
+                perror("CRITICAL ERROR: Failed to allocate memory for operand node: ");
+                exit(EXIT_FAILURE);
+            }
+
             node->operand = OPERAND_STRING;
             node->identifier = id;
             node->next = NULL;
@@ -390,6 +420,12 @@ struct operand_node *operand_cfg() {
             match_cfg(TOK_INTEGER);
             
             node = (struct operand_node *)malloc(sizeof(struct operand_node));
+
+            if(node == NULL) {
+                perror("CRITICAL ERROR: Failed to allocate memory for operand node: ");
+                exit(EXIT_FAILURE);
+            }
+
             node->operand = OPERAND_IMMEDIATE;
             node->identifier = NULL;
             node->value.integer = value;
@@ -410,6 +446,12 @@ struct operand_node *operand_cfg() {
             int reg_value = cfg_assembler->tokenizer->attrval;
             if(match_cfg(TOK_REGISTER) && match_cfg(TOK_RPAREN)) {
                 node = (struct operand_node *)malloc(sizeof(struct operand_node));
+
+                if(node == NULL) {
+                    perror("CRITICAL ERROR: Failed to allocate memory for operand node: ");
+                    exit(EXIT_FAILURE);
+                }
+
                 node->operand = OPERAND_ADDRESS;
                 node->value.reg = reg_value;
                 node->value.integer = 0;
@@ -1356,6 +1398,12 @@ struct instruction_node *instruction_cfg() {
     switch(cfg_assembler->lookahead) {
         case TOK_DIRECTIVE: {
             node = (struct instruction_node *)malloc(sizeof(struct instruction_node));
+
+            if(node == NULL) { 
+                perror("CRITICAL ERROR: Failed to allocate memory for instruction node: ");
+                exit(EXIT_FAILURE);
+            }
+
             node->mnemonic = (struct reserved_entry *)cfg_assembler->tokenizer->attrptr;
             node->offset = cfg_assembler->segment_offset[cfg_assembler->segment];
             node->segment = cfg_assembler->segment;
@@ -1387,6 +1435,12 @@ struct instruction_node *instruction_cfg() {
         }
         case TOK_MNEMONIC:
             node = (struct instruction_node *)malloc(sizeof(struct instruction_node));
+
+            if(node == NULL) { 
+                perror("CRITICAL ERROR: Failed to allocate memory for instruction node: ");
+                exit(EXIT_FAILURE);
+            }
+
             node->mnemonic = (struct reserved_entry *)cfg_assembler->tokenizer->attrptr;
             node->offset = cfg_assembler->segment_offset[cfg_assembler->segment];
             node->segment = cfg_assembler->segment;
@@ -1521,6 +1575,8 @@ void destroy_tokenizer_list(struct assembler *assembler) {
  **/
 struct assembler *create_assembler() {
     struct assembler *assembler = (struct assembler *)malloc(sizeof(struct assembler));
+
+    if(assembler == NULL) return NULL;
 
     assembler->tokenizer = NULL;
     assembler->tokenizer_list = NULL;

@@ -99,7 +99,8 @@ void percolate_symbol_table(struct symbol_table *symtab) {
         
         symtab->bucket_size <<= 1;
         symtab->length = 0;
-        symtab->buckets = (struct symbol_table_entry **)calloc(symtab->bucket_size, sizeof(struct symbol_table_entry));
+        symtab->buckets = (struct symbol_table_entry **)calloc(symtab->bucket_size, 
+                                                        sizeof(struct symbol_table_entry));
 
         for(size_t i = 0; i < prev_size; ++i) {
             struct symbol_table_entry *head = prev_buckets[i], *next_head;

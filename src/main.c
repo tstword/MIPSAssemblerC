@@ -85,6 +85,12 @@ int main(int argc, char *argv[]) {
     /* Windows users will have to report errors (if any) */
 
     input_array = (const char **)malloc(sizeof(const char *) * (argc - 1));
+    
+    if(input_array == NULL) { 
+        perror("CRITICAL ERROR: Failed to allocate memory input_array: ");
+        exit(EXIT_FAILURE);
+    }
+    
     input_count = 0;
 
     int skip_index = 0, ch;

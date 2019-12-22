@@ -10,6 +10,8 @@
 #include "linkedlist.h"
 
 #include <stdlib.h>
+#include <errno.h>
+#include <stdio.h>
 
 /**
  * @function: create_list
@@ -19,6 +21,7 @@
 struct linked_list *create_list()
 {
 	struct linked_list *list = (struct linked_list *)malloc(sizeof(struct linked_list));
+	if(list == NULL) return NULL;
 	list->front = list->rear = NULL;
 	return list;
 }
@@ -33,6 +36,12 @@ struct linked_list *create_list()
 void insert_front(struct linked_list *list, void *value)
 {
 	struct list_node *node = (struct list_node *)malloc(sizeof(struct list_node));
+	
+	if(node == NULL) { 
+        perror("CRITICAL ERROR: Failed to allocate memory for linked list node: ");
+        exit(EXIT_FAILURE);
+    }
+	
 	node->next = list->front;
 	node->value = value;
 
@@ -54,6 +63,12 @@ void insert_front(struct linked_list *list, void *value)
 void insert_rear(struct linked_list *list, void *value)
 {
 	struct list_node *node = (struct list_node *)malloc(sizeof(struct list_node));
+
+	if(node == NULL) { 
+        perror("CRITICAL ERROR: Failed to allocate memory for linked list node: ");
+        exit(EXIT_FAILURE);
+    }
+
 	node->value = value;
 	node->next = NULL;
 
