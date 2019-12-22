@@ -208,9 +208,6 @@ void write_escaped_string(char *string) {
                 case 'b':
                     ch = '\b';
                     break;
-                case 'e':
-                    ch = '\e';
-                    break;
                 case 'f':
                     ch = '\f';
                     break;

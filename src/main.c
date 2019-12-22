@@ -84,7 +84,7 @@ int main(int argc, char *argv[]) {
     /* We could use this parsing algorithm for Linux / Mac, but I trust getopt more */
     /* Windows users will have to report errors (if any) */
 
-    input_array = (const char **)malloc(sizeof(const char *) * (argc - 1));
+    input_array = (const char **)malloc(sizeof(const char *) * argc);
     
     if(input_array == NULL) { 
         perror("CRITICAL ERROR: Failed to allocate memory input_array: ");
@@ -138,7 +138,9 @@ int main(int argc, char *argv[]) {
             }
             if(skip_index) ++i;
         }
-        else input_array[input_count++] = (const char *)argv[i];
+        else {
+            input_array[input_count++] = (const char *)argv[i];
+        }
     }
 #endif
 
@@ -154,7 +156,7 @@ int main(int argc, char *argv[]) {
     astatus_t status = execute_assembler(assembler, input_array, input_count);
 
 #ifdef _WIN32
-    free(input_array);   /* I'm annoyed that I have to do this but oh well, nothing to do right now. */
+    free((void *)input_array);   /* I'm annoyed that I have to do this but oh well, nothing to do right now. */
 #endif
     if(status != ASSEMBLER_STATUS_OK) {
         fprintf(stderr, "\nFailed to assemble program\n");

@@ -606,7 +606,6 @@ state_fsm string_escape_fsm(struct tokenizer *tokenizer) {
         case '0':
         case 'a':
         case 'f':
-        case 'e':
         case 'v':
         case '\'':
         case '"':
@@ -633,7 +632,6 @@ state_fsm escape_fsm(struct tokenizer *tokenizer) {
         case '0':
         case 'a':
         case 'f':
-        case 'e':
         case 'v':
         case '\'':
         case '"':
@@ -713,9 +711,6 @@ token_t return_token(token_t token, struct tokenizer *tokenizer) {
                         case 'b':
                             tokenizer->attrval = '\b';
                             break;
-                        case 'e':
-                            tokenizer->attrval = '\e';
-                            break;
                         case 'f':
                             tokenizer->attrval = '\f';
                             break;
@@ -758,15 +753,16 @@ token_t return_token(token_t token, struct tokenizer *tokenizer) {
             else {
                 long long value;
                 if(*tokenizer->lexbuf == '-') {
-                    tokenizer->attrval = value = strtoll(tokenizer->lexbuf + 1, NULL, 0);
-                    tokenizer->attrval *= -1;
+                    value = strtoll(tokenizer->lexbuf + 1, NULL, 0);
+                    tokenizer->attrval = (int)value * -1;
                     if(value > 0x80000000) {
                         report_fsm(tokenizer, "Integer literal '%s' cannot be represented with 32-bits on line %ld", tokenizer->lexbuf, tokenizer->lineno);
                         return TOK_INVALID;
                     }
                 }
                 else {
-                    tokenizer->attrval = value = strtoll(tokenizer->lexbuf, NULL, 0);
+                    value = strtoll(tokenizer->lexbuf, NULL, 0);
+                    tokenizer->attrval = (int)value;
                     if(value > 0xFFFFFFFF) {
                         report_fsm(tokenizer, "Integer literal '%s' cannot be represented with 32-bits on line %ld", tokenizer->lexbuf, tokenizer->lineno);
                         return TOK_INVALID;
