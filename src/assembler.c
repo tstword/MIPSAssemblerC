@@ -312,13 +312,16 @@ void label_cfg() {
 
             if(cfg_assembler->lookahead == TOK_DIRECTIVE) {
                 struct opcode_entry *entry = (struct opcode_entry *)((struct reserved_entry *)cfg_assembler->tokenizer->attrptr)->attrptr;
-                switch(entry - opcode_table) {
-                    case DIRECTIVE_WORD:
-                        align_segment_offset(2);
-                        break;
-                    case DIRECTIVE_HALF:
-                        align_segment_offset(1);
-                        break;
+                
+                if(cfg_assembler->auto_align) {
+                    switch(entry - opcode_table) {
+                        case DIRECTIVE_WORD:
+                            align_segment_offset(2);
+                            break;
+                        case DIRECTIVE_HALF:
+                            align_segment_offset(1);
+                            break;
+                    }
                 }
             }
 
@@ -1289,6 +1292,7 @@ int check_directive(struct instruction_node *instr) {
             break;
         case DIRECTIVE_DATA:
             cfg_assembler->segment = SEGMENT_DATA;
+            cfg_assembler->auto_align = 1;
             break;
         case DIRECTIVE_KTEXT:
             cfg_assembler->segment = SEGMENT_KTEXT;
@@ -1304,7 +1308,8 @@ int check_directive(struct instruction_node *instr) {
                 assemble_status = 0;
             }
             else if(operand_list->value.integer == 0) {
-                /* TO-DO: Disable automatic alignment of .half, .word, directives until next .data segment */
+                /* Disable automatic alignment of .half, .word, directives until next .data segment */
+                cfg_assembler->auto_align = 0;
             }
             else {
                 align_segment_offset(operand_list->value.integer);
@@ -1313,7 +1318,6 @@ int check_directive(struct instruction_node *instr) {
         }
         case DIRECTIVE_WORD: {
             struct operand_node *current_operand = operand_list;
-            align_segment_offset(2);
             while(current_operand != NULL) {
                 if(current_operand->operand & OPERAND_LABEL) {
                     /* Check if label has been defined */
@@ -1342,7 +1346,6 @@ int check_directive(struct instruction_node *instr) {
         }
         case DIRECTIVE_HALF: {
             struct operand_node *current_operand = operand_list;
-            align_segment_offset(1);
             while(current_operand != NULL) {
                 int value = current_operand->value.integer;
                 write_segment_memory((void *)&value, 0x2);
@@ -1592,6 +1595,8 @@ struct assembler *create_assembler() {
         assembler->segment_memory_offset[segment] = 0;
         assembler->segment_memory_size[segment] = 0;
     }
+
+    assembler->auto_align = 1;
     
     return assembler;
 }

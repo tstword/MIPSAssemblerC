@@ -121,6 +121,8 @@ struct assembler {
     astatus_t               status;
     segment_t               segment;
 
+    char                    auto_align;
+
     offset_t                segment_offset[MAX_SEGMENTS];
 
     size_t                  segment_memory_offset[MAX_SEGMENTS];
