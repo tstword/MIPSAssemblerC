@@ -187,7 +187,7 @@ Directive    | Description
 ------------ | -------------
 .ascii "\<string\>", ... | Creates non-null terminated strings in the .data segment
 .asciiz "\<string\>", ... | Creates null terminated strings in the .data segment
-.align \<n\> | Aligns the current segment offset to 2^\<n\>*
+.align \<n\> | Aligns the current segment offset to 2^\<n\><br>If \<n\> = 0, automatic alignment is disabled until next .data directive
 .byte \<byte\>, ... | Creates bytes in the .data segment
 .data | Changes the segment to DATA
 .half \<half\>, ... | Creates half-words in the .data segment
@@ -197,6 +197,8 @@ Directive    | Description
 .space \<n\> | Creates \<n\> bytes of unitialized space (value defaults to 0)
 .text | Changes the segment to TEXT
 .word \<word\>, ... | Creates words in the .text or .data segment
+
+* If \<n\> = 0, then automatic alignment is 
 
 ### Support for psuedo instructions
 
