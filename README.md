@@ -99,7 +99,6 @@ Should you decide to use the assembler in your own main program, here is an exam
 
 int main(int argc, char *argv[]) {
     const char *program_files[] = {"program1.asm", "program2.asm"};
-    
     struct assembler *assembler = create_assembler();
     
     /* Execute and check to see if the assembler failed to parse the files */
