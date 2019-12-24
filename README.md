@@ -194,9 +194,7 @@ Directive    | Description
 .ktext | Changes the segment to KTEXT
 .space \<n\> | Creates \<n\> bytes of unitialized space (value defaults to 0)
 .text | Changes the segment to TEXT
-.word \<word\>, ... | Creates words in the .text or .data segment
-
-* If \<n\> = 0, then automatic alignment is 
+.word \<word\>, ... | Creates words in the .text or .data segment 
 
 ### Support for psuedo instructions
 
