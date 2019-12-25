@@ -248,7 +248,7 @@ Psuedo Instruction | Description
 abs $d, $s | Stores the absolute value of $s into $d
 addi $t, $s, imm32 | Addition with 32-bit immediate
 addiu $t, $s, imm32 | Unsigned addition with 32-bit immediate
-andi $t, $s, imm32 | Logical and with 32-bit immediate
+andi $t, $s, imm32 | Logical AND with 32-bit immediate
 b label | Branch to label
 beq $s, imm, label | Branch on equal with 16-bit immediate
 beqz $s, label | Branch on equal to zero
@@ -280,7 +280,7 @@ lw $t, label | Load word stored at the label
 move $t, $s | Moves contents of register $s to register $t
 neg $d, $s | Stores the negated value of $s into $d
 not $d, $s | Logical not
-ori $t, $s, imm32 | Logical or with 32-bit immediate
+ori $t, $s, imm32 | Logical OR with 32-bit immediate
 rol $t, $s, imm | Rotates the contents of $s to the left by the amount specified by imm
 ror $t, $s, imm | Rotates the contents of $s to the right by the amount specified by imm
 sb $t, label | Store byte at the label
@@ -290,7 +290,7 @@ slti $t, $s, imm32 | Set less than with 32-bit immediate
 sltiu $t, $s, imm32 | Set less than unsigned with 32-bit immediate
 sne $d, $s, $t | Set not equal
 sw $t, label | Store word at the label
-xori $t, $s, imm32 | Logical xor with 32-bit immediate
+xori $t, $s, imm32 | Logical XOR with 32-bit immediate
 
 ---
 
