@@ -177,7 +177,52 @@ Following the section header are the bytes of the segment itself indicated by sh
 
 ### Support for the core arithmetic instruction set
 
-The assembler supports the instruction set listed here: <a href="http://www.mrc.uidaho.edu/mrc/people/jff/digital/MIPSir.html">http://www.mrc.uidaho.edu/mrc/people/jff/digital/MIPSir.html</a>
+Core Instruction | Description
+---------------- | -----------
+add $d, $s, $t | Addition
+addi $t, $s, imm | Addition with 16-bit sign-extended immediate
+addiu $t, $s, imm | Unsigned addition with 16-bit sign-extended immediate
+addu $d, $s, $t | Unsigned addition
+and $d, $s, $t | Logical AND
+andi $t, $s, imm | Logical AND with 16-bit immediate
+beq $s, $t, label | Branch on equal
+bgez $s, $t, label | Branch on greater than or equal to zero
+bgezal $s, $t, label | Branch on greater than or equal to zero and link
+bgtz $s, $t, label | Branch on greater than zero
+blez $s, $t, label | Branch on less than or equal
+bltz $s, $t, label | Branch on less than zero
+bltzal $s, $t, label | Branch on less than zero and link
+bne $s, $t, label | Branch on not equal
+div $s, $t | Division
+divu $s, $t | Unsigned division
+j label | Jump
+jal label | Jump and link
+jr $s | Jump register
+lb $t, imm($s) | Load byte
+lh $t, imm($s) | Load half-word
+lui $t, imm | Load upper immediate
+lw $t, imm($s) | Load word
+mfhi $d | Move from HI
+mflo $d | Move from LO
+mult $s, $t | Multiplication
+multu $s, $t | Unsigned multiplication
+or $d, $s, $t | Logical OR
+ori $t, $s, imm | Logical OR with 16-bit immediate
+sb $t, imm($s) | Store byte
+sh $t, imm($s) | Store half-word
+sll $d, $t, shamt | Shift left logical
+slt $d, $s, $t | Set less than
+slti $t, $s, imm | Set less than with 16-bit sign-extended immediate
+sltiu $t, $s, imm | Set less than unsigned with 16-bit sign-extended immediate
+sltu $d, $s, $t | Set less than unsigned
+sra $d, $t, shamt | Shift right arithmetic
+srl $d, $t, shamt | Shift right logical
+sub $d, $s, $t | Subtraction
+subu $d, $s, $t | Unsigned subtraction
+sw $t, imm($s) | Store word
+syscall | System call
+xor $d, $s, $t | Logical XOR
+xori $t, $s, imm | Logical XOR with 16-bit immediate
 
 ### Support for assembly directives
 
