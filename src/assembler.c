@@ -143,22 +143,27 @@ void align_segment_offset(uint32_t n) {
 }
 
 /**
- * @function: write_segment_memory
- * @purpose: Writes the contents of the buffer into the current segment of
- * the assembler. The memory corresponding to the segment is allocated in 
- * chunks of 1024 bytes.
+ * @function: alloc_segment_memory
+ * @purpose: Verifies if the size specified can be written to the current segment's
+ * memory buffer. If there isn't enough space, then the size specified is aligned to 
+ * the next multiple of 1024 and the buffer size is increased by that amount. This
+ * ensures that the buffer size is always a multiple of 1024.
  * @param buf  -> The address of the data to write
  * @param size -> The number of bytes to write
  **/
-void write_segment_memory(void *buf, size_t size) {
+void alloc_segment_memory(size_t size) {
     segment_t segment = cfg_assembler->segment;
-    offset_t buf_offset = cfg_assembler->segment_offset[segment] - SEGMENT_OFFSET_BASE[segment];
-    offset_t next_offset = buf_offset + size;
-    
+    offset_t next_offset = cfg_assembler->segment_offset[segment] - SEGMENT_OFFSET_BASE[segment] + size;
+
     if(next_offset > cfg_assembler->segment_memory_size[segment]) {
+        /* Align to the nearest 1024 */
+        uint32_t remainder = (uint32_t)size & 0x03FF;
+        if(remainder != 0) size += 0x0400 - remainder;
+
+        /* Reallocate memory */
         size_t mem_size = cfg_assembler->segment_memory_size[segment];
         void *realloc_ptr = (void *)realloc(cfg_assembler->segment_memory[segment], 
-                                    cfg_assembler->segment_memory_size[segment] + 1024);
+                                    cfg_assembler->segment_memory_size[segment] + size);
 
         if(realloc_ptr == NULL) {
             perror("CRITICAL ERROR: Failed to reallocate memory for segment: ");
@@ -166,17 +171,30 @@ void write_segment_memory(void *buf, size_t size) {
             return;
         }
 
-        cfg_assembler->segment_memory_size[segment] += 1024;
+        cfg_assembler->segment_memory_size[segment] += size;
         cfg_assembler->segment_memory[segment] = realloc_ptr;
 
-        memset((char *)cfg_assembler->segment_memory[segment] + mem_size, 0, 1024);
+        memset((char *)cfg_assembler->segment_memory[segment] + mem_size, 0, size);
     }
-    
-    memcpy((char *)cfg_assembler->segment_memory[segment] + buf_offset, buf, size);
-    
+
     if(next_offset > cfg_assembler->segment_memory_offset[segment]) {
         cfg_assembler->segment_memory_offset[segment] = next_offset;
     }
+}
+
+/**
+ * @function: write_segment_memory
+ * @purpose: Writes the contents of the buffer into the current segment of
+ * the assembler.
+ * @param buf  -> The address of the data to write
+ * @param size -> The number of bytes to write
+ **/
+void write_segment_memory(void *buf, size_t size) {
+    segment_t segment = cfg_assembler->segment;
+    offset_t buf_offset = cfg_assembler->segment_offset[segment] - SEGMENT_OFFSET_BASE[segment];
+    
+    alloc_segment_memory(size);
+    memcpy((char *)cfg_assembler->segment_memory[segment] + buf_offset, buf, size);
 }
 
 /**
@@ -1376,6 +1394,7 @@ int check_directive(struct instruction_node *instr) {
             break;
         }
         case DIRECTIVE_SPACE: {
+            alloc_segment_memory(operand_list->value.integer);
             incr_segment_offset(operand_list->value.integer);
             break;
         }
