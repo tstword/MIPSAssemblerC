@@ -1,7 +1,6 @@
 \
-\
 <img src="https://fontmeme.com/temporary/ba4c1b6030ee3486f05b156afcecfb95.png">
-\
+
 \
 
 # MIPS Assembler C
