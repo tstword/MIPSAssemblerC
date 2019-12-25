@@ -199,7 +199,9 @@ j label | Jump
 jal label | Jump and link
 jr $s | Jump register
 lb $t, imm($s) | Load byte
+lbu $t, imm($s) | Load byte unsigned
 lh $t, imm($s) | Load half-word
+lhu $t, imm($s) | Load half-word unsigned
 lui $t, imm | Load upper immediate
 lw $t, imm($s) | Load word
 mfhi $d | Move from HI
