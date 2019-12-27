@@ -1,6 +1,8 @@
 \
 <img src="https://fontmeme.com/temporary/ba4c1b6030ee3486f05b156afcecfb95.png"><br><br>
 
+### * HIGHLY EXPERIMENTAL BRANCH. ATTEMPTING TO IMPLEMENT MACROS WITH PASS 0.
+
 # MIPS Assembler C
 
 > A MIPS assembler written in C that supports the core arithmetic instructions, assembly directives, and psuedo instructions.

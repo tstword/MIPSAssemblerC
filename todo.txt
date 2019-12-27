@@ -1,0 +1,18 @@
+Add MACROS, this is a major feature that the one-pass assembler isn't designed to handle through an obvious way
+
+There are a few properties of marcos that we know:
+
+Syntax (CFG):
+
+macro -> macro_begin instruction_list macro_end
+
+macro_begin   -> <begin_macro> <identifier> <lparen> macro_oplist <rparen> <EOL> |
+                 <begin_macro> <identifier> <lparen> <rparen> <EOL> |
+                 <begin_macro> <identifier> <EOL>
+
+macro_oplist -> macro_operand <comma> macro_oplist |
+                macro_operand
+
+macro_operand -> <percent> <identifer>
+
+macro_end -> <end_macro> <EOL>
