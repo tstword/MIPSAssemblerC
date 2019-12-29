@@ -162,7 +162,7 @@ char *get_tempfile(const char *prefix, const char *suffix) {
 		return NULL;
 	}
 
-	tempfile = (char*)malloc(tmpflen);
+	tempfile = (char*)malloc(tmpflen + 1);
 
 	if(tempfile == NULL) {
 		free(apibuffer);
