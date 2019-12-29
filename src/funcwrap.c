@@ -126,8 +126,8 @@ char *get_tempdir() {
 }
 
 char *get_tempfile(const char *prefix, const char *suffix) {
-    const char *template = "XXXXXX";
     char *tempdir = get_tempdir();
+    char *tempfile;
     
     if(tempdir == NULL) return NULL;
     if(prefix == NULL) prefix = "";
@@ -137,10 +137,35 @@ char *get_tempfile(const char *prefix, const char *suffix) {
     int preflen = strlen(prefix);
     int sufflen = strlen(suffix);
 
+#ifdef _WIN32
+    char *apibuffer = (char *)malloc(MAX_PATH);
+    int apiblen;
+
+    if(apibuffer == NULL) {
+        free(tempdir);
+        return NULL;
+    }
+
+    /* Make call to Windows API */
+    if(GetTempFileNameA(tempdir, "", 0, apibuffer) == 0) {
+        free(apibuffer);
+        free(tempdir);
+        return NULL;
+    }
+
+    
+#else
+    const char *template = "XXXXXX";
+
     /* Temporary file descriptor created from mkstemp */
     int tempfd;
 
-    char *tempfile = (char *)malloc(tmpdlen + preflen + 6 + sufflen + 1);
+    tempfile = (char *)malloc(tmpdlen + preflen + 6 + sufflen + 1);
+
+    if(tempfile == NULL) {
+        free(tempdir);
+        return NULL;
+    }
 
     memcpy((void *)tempfile, (void *)tempdir, tmpdlen);
     memcpy((void *)(tempfile + tmpdlen), (void *)prefix, preflen);
@@ -159,7 +184,7 @@ char *get_tempfile(const char *prefix, const char *suffix) {
         perror("CRITICAL ERROR: Failed to close file descriptor during creation of temporary file: ");
         exit(EXIT_FAILURE);
     }
-
+#endif
     /* Free used data */
     free(tempdir);
 
