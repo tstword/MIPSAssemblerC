@@ -153,27 +153,29 @@ char *get_tempfile(const char *prefix, const char *suffix) {
         return NULL;
     }
 
-	apiblen = strlen(apibuffer);
-	tmpflen = (apiblen - 4) + preflen + sufflen;
+    apiblen = strlen(apibuffer);
+    tmpflen = (apiblen - 4) + preflen + sufflen;
 
-	if (tmpflen >= MAX_PATH) {
-		free(apibuffer);
-		free(tempdir);
-		return NULL;
-	}
+    if(tmpflen >= MAX_PATH) {
+        free(apibuffer);
+        free(tempdir);
+        return NULL;
+    }
 
-	tempfile = (char*)malloc(tmpflen + 1);
+    tempfile = (char*)malloc(tmpflen + 1);
 
-	if(tempfile == NULL) {
-		free(apibuffer);
-		free(tempdir);
-		return NULL;
-	}
+    if(tempfile == NULL) {
+        free(apibuffer);
+        free(tempdir);
+        return NULL;
+    }
 
-	memcpy((void *)tempfile, (void *)tempdir, tmpdlen);
-	memcpy((void *)(tempfile + tmpdlen), (void *)prefix, preflen);
-	memcpy((void *)(tempfile + tmpdlen + preflen), (void *)(apibuffer + tmpdlen), 4);
-	memcpy((void *)(tempfile + tmpdlen + preflen + 4), (void *)suffix, sufflen + 1);
+    memcpy((void *)tempfile, (void *)tempdir, tmpdlen);
+    memcpy((void *)(tempfile + tmpdlen), (void *)prefix, preflen);
+    memcpy((void *)(tempfile + tmpdlen + preflen), (void *)(apibuffer + tmpdlen), 4);
+    memcpy((void *)(tempfile + tmpdlen + preflen + 4), (void *)suffix, sufflen + 1);
+
+    free(apibuffer);
 #else
     const char *template = "XXXXXX";
 
