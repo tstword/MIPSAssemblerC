@@ -12,6 +12,7 @@
 
 #include "funcwrap.h"
 
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -122,4 +123,45 @@ char *get_tempdir() {
     tmpdir[sdirlen + 1] = 0;
 #endif
     return tmpdir;
+}
+
+char *get_tempfile(const char *prefix, const char *suffix) {
+    const char *template = "XXXXXX";
+    char *tempdir = get_tempdir();
+    
+    if(tempdir == NULL) return NULL;
+    if(prefix == NULL) prefix = "";
+    if(suffix == NULL) suffix = "";
+    
+    int tmpdlen = strlen(tempdir);
+    int preflen = strlen(prefix);
+    int sufflen = strlen(suffix);
+
+    /* Temporary file descriptor created from mkstemp */
+    int tempfd;
+
+    char *tempfile = (char *)malloc(tmpdlen + preflen + 6 + sufflen + 1);
+
+    memcpy((void *)tempfile, (void *)tempdir, tmpdlen);
+    memcpy((void *)(tempfile + tmpdlen), (void *)prefix, preflen);
+    memcpy((void *)(tempfile + tmpdlen + preflen), (void *)template, 6);
+    memcpy((void *)(tempfile + tmpdlen + preflen + 6), (void *)suffix, sufflen + 1);
+
+    /* Create unique temporary name using mkstemp */
+    if((tempfd = mkstemps(tempfile, sufflen)) == -1) {
+        free(tempdir);
+        free(tempfile);
+        return NULL;
+    }
+
+    /* Close file descriptor */
+    if(close(tempfd) == -1) {
+        perror("CRITICAL ERROR: Failed to close file descriptor during creation of temporary file: ");
+        exit(EXIT_FAILURE);
+    }
+
+    /* Free used data */
+    free(tempdir);
+
+    return tempfile;
 }
