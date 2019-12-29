@@ -139,7 +139,7 @@ char *get_tempfile(const char *prefix, const char *suffix) {
 
 #ifdef _WIN32
     char *apibuffer = (char *)malloc(MAX_PATH);
-    int apiblen;
+	int apiblen, tmpflen;
 
     if(apibuffer == NULL) {
         free(tempdir);
@@ -153,7 +153,27 @@ char *get_tempfile(const char *prefix, const char *suffix) {
         return NULL;
     }
 
-    
+	apiblen = strlen(apibuffer);
+	tmpflen = (apiblen - 4) + preflen + sufflen;
+
+	if (tmpflen >= MAX_PATH) {
+		free(apibuffer);
+		free(tempdir);
+		return NULL;
+	}
+
+	tempfile = (char*)malloc(tmpflen);
+
+	if(tempfile == NULL) {
+		free(apibuffer);
+		free(tempdir);
+		return NULL;
+	}
+
+	memcpy((void *)tempfile, (void *)tempdir, tmpdlen);
+	memcpy((void *)(tempfile + tmpdlen), (void *)prefix, preflen);
+	memcpy((void *)(tempfile + tmpdlen + preflen), (void *)(apibuffer + tmpdlen), 4);
+	memcpy((void *)(tempfile + tmpdlen + preflen + 4), (void *)suffix, sufflen + 1);
 #else
     const char *template = "XXXXXX";
 
