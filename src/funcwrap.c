@@ -13,8 +13,12 @@
 #include "funcwrap.h"
 
 #include <string.h>
-#ifdef _WIN32
 #include <stdlib.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <unistd.h>
 #endif
 
 /**
@@ -51,4 +55,71 @@ char *strdup_wrap(const char *src) {
 #else
     return strdup(src);
 #endif
+}
+
+/**
+ * @function: get_tempdir
+ * @purpose: Retrives the temporary directory.
+ * @return A dynamically allocated string containing the temporary directory path. NULL if it fails.
+ **/
+char *get_tempdir() {
+    char *tmpdir;
+#ifdef _WIN32
+    DWORD bufsize = GetTempPathA(0, NULL);
+    if(bufsize == 0) {
+        return strdup_wrap(".\\");
+    }
+
+    tmpdir = (char *)malloc(bufsize);
+    if(tmpdir == NULL) {
+        return NULL;
+    }
+
+    if(GetTempPathA(bufsize, tmpdir) == 0) {
+        free(tmpdir);
+        return strdup_wrap(".\\");
+    }
+#else
+    const char *envarr[] = { "TMPDIR", "TEMP", "TMP" };  
+    int envarr_size = sizeof(envarr) / sizeof(const char *);
+
+    const char *dirarr[] = { "/tmp", "/var/tmp", "/usr/tmp" };
+    int dirarr_size = sizeof(dirarr) / sizeof(char *);
+
+    const char *envdir = NULL;
+
+    const char *selectdir = NULL;
+
+    /* Check environment variables first */
+    for(int i = 0; selectdir == NULL && i < envarr_size; ++i) {
+        if((envdir = getenv(envarr[i])) && access(envdir, R_OK | W_OK | X_OK) == 0) {
+            selectdir = envdir;
+        }
+    }
+
+    /* Check standard directories */
+    for(int i = 0; selectdir == NULL && i < dirarr_size; ++i) {
+        if(access(dirarr[i], R_OK | W_OK | X_OK) == 0) {
+            selectdir = dirarr[i];
+        }
+    }
+
+    /* Default to current directory */
+    if(selectdir == NULL) {
+        return strdup("./");
+    }
+
+    /* Dynamically allocate string and append directory seperator */
+    int sdirlen = strlen(selectdir);
+
+    tmpdir = (char *)malloc(sdirlen + 2);
+    if(tmpdir == NULL) {
+        return NULL;
+    }
+
+    strcpy(tmpdir, selectdir);
+    tmpdir[sdirlen] = '/';
+    tmpdir[sdirlen + 1] = 0;
+#endif
+    return tmpdir;
 }

@@ -17,5 +17,6 @@
 
 FILE *fopen_wrap(const char *, const char *);
 char *strdup_wrap(const char *);
+char *get_tempdir();
 
 #endif
