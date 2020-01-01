@@ -139,7 +139,7 @@ char *get_tempfile(const char *prefix, const char *suffix) {
 
 #ifdef _WIN32
     char *apibuffer = (char *)malloc(MAX_PATH);
-	int apiblen, tmpflen;
+    int apiblen, tmpflen;
 
     if(apibuffer == NULL) {
         free(tempdir);

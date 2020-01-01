@@ -113,10 +113,12 @@ struct reserved_entry reserved_table[] = {
     { ".asciiz"   , TOK_DIRECTIVE, opcode_table + DIRECTIVE_ASCIIZ ,  0 },
     { ".byte"     , TOK_DIRECTIVE, opcode_table + DIRECTIVE_BYTE   ,  0 },
     { ".data"     , TOK_DIRECTIVE, opcode_table + DIRECTIVE_DATA   ,  0 },
+    { ".end_macro", TOK_MACRO_END, NULL                            ,  0 },
     { ".half"     , TOK_DIRECTIVE, opcode_table + DIRECTIVE_HALF   ,  0 },
     { ".include"  , TOK_DIRECTIVE, opcode_table + DIRECTIVE_INCLUDE,  0 },
     { ".kdata"    , TOK_DIRECTIVE, opcode_table + DIRECTIVE_KDATA  ,  0 },
     { ".ktext"    , TOK_DIRECTIVE, opcode_table + DIRECTIVE_KTEXT  ,  0 },
+    { ".macro"    , TOK_MACRO    , NULL                            ,  0 },
     { ".space"    , TOK_DIRECTIVE, opcode_table + DIRECTIVE_SPACE  ,  0 },
     { ".text"     , TOK_DIRECTIVE, opcode_table + DIRECTIVE_TEXT   ,  0 },
     { ".word"     , TOK_DIRECTIVE, opcode_table + DIRECTIVE_WORD   ,  0 },
@@ -341,6 +343,7 @@ state_fsm init_fsm(struct tokenizer *tokenizer) {
         case '$':
         case '_':
         case '.':
+        case '%':
             return identifier_state;
         case '"':
             /* Ignore " character */

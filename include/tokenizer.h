@@ -51,6 +51,8 @@
 #define TOK_STRING      0x0A
 #define TOK_INVALID     0x0B
 #define TOK_DIRECTIVE   0x0C
+#define TOK_MACRO       0x0D
+#define TOK_MACRO_END   0x0E
 
 /* Type definitions */
 typedef unsigned int token_t;

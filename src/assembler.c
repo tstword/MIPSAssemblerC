@@ -20,7 +20,7 @@
  * 
  *     operand          -> <REGISTER>   | 
  *                         <IDENTIFIER> | 
- *                         <INTEGER>    |
+ *                         <INTEGER>     |
  *                         <INTEGER> <LPAREN> <REGISTER> <RPAREN>
  *                    
  *     label            -> <ID> <COLON> | epsilon
