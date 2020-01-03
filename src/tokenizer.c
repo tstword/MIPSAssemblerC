@@ -682,11 +682,12 @@ token_t return_token(token_t token, struct tokenizer *tokenizer) {
     /* Set NULL terminator */
     tokenizer->lexbuf[tokenizer->bufpos] = '\0';
 
-    /* Skip whiespace */
-    while((ch = fgetc(tokenizer->fstream)) == ' ' || ch == '\t') { 
-        tokenizer->colno++; 
-    }
-    ungetc(ch, tokenizer->fstream);
+    /* Why is this here? The FSM already skips whitespace, guess I forgot to remove this... */
+    // /* Skip whiespace */
+    // while((ch = fgetc(tokenizer->fstream)) == ' ' || ch == '\t') { 
+    //     tokenizer->colno++; 
+    // }
+    // ungetc(ch, tokenizer->fstream);
 
     /* Set attributes */
     switch(token) {
