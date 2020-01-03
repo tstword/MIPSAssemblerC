@@ -226,7 +226,14 @@ struct reserved_entry* get_reserved_table(const char *key) {
  * @return The next character in the file stream
  **/
 int tgetc(struct tokenizer *tokenizer) {
-    int ch = fgetc(tokenizer->fstream);
+    int ch;
+
+    if(tokenizer->mode == TK_MODE_FILE) {
+        ch = fgetc(tokenizer->fstream);
+    }
+    else {
+        ch = (tokenizer->fstrpos >= tokenizer->fstrlen ? EOF : tokenizer->fstring[tokenizer->fstrpos++]);
+    }
 
     /* Adjust tokenizer buffer if necessary */
     if(tokenizer->bufpos >= tokenizer->bufsize) {
@@ -253,7 +260,12 @@ int tgetc(struct tokenizer *tokenizer) {
  * @param tokenizer -> Pointer to the tokenizer structure
  **/
 void tungetc(int ch, struct tokenizer *tokenizer) {
-    ungetc(ch, tokenizer->fstream);
+    if(tokenizer->mode == TK_MODE_FILE) {
+        ungetc(ch, tokenizer->fstream);
+    }
+    else if(tokenizer->fstrpos != 0) {
+        --tokenizer->fstrpos;
+    }
     tokenizer->colno--;
     tokenizer->bufpos--;
 }
@@ -265,8 +277,14 @@ void tungetc(int ch, struct tokenizer *tokenizer) {
  * @return The next character in the file stream
  **/
 int tpeekc(struct tokenizer *tokenizer) {
-    int ch = fgetc(tokenizer->fstream);
-    ungetc(ch, tokenizer->fstream);
+    int ch;
+    if(tokenizer->mode == TK_MODE_FILE) {
+        ch = fgetc(tokenizer->fstream);
+        ungetc(ch, tokenizer->fstream);
+    }
+    else {
+        ch = (tokenizer->fstrpos >= tokenizer->fstrlen ? EOF : tokenizer->fstring[tokenizer->fstrpos++]);
+    }
     return ch;
 }
 
@@ -676,18 +694,10 @@ state_fsm quote_fsm(struct tokenizer *tokenizer) {
  * @return The actual token to return to the function get_next_token
  **/
 token_t return_token(token_t token, struct tokenizer *tokenizer) {
-    int ch;
     struct reserved_entry *entry;
 
     /* Set NULL terminator */
     tokenizer->lexbuf[tokenizer->bufpos] = '\0';
-
-    /* Why is this here? The FSM already skips whitespace, guess I forgot to remove this... */
-    // /* Skip whiespace */
-    // while((ch = fgetc(tokenizer->fstream)) == ' ' || ch == '\t') { 
-    //     tokenizer->colno++; 
-    // }
-    // ungetc(ch, tokenizer->fstream);
 
     /* Set attributes */
     switch(token) {
@@ -806,6 +816,11 @@ struct tokenizer *create_tokenizer(const char *file) {
         return NULL; 
     }
 
+    /* Set C string to read from to NULL */
+    tokenizer->fstring = NULL;
+    tokenizer->fstrlen = 0;
+    tokenizer->fstrpos = 0;
+
     /* Create string buffer */
     tokenizer->lexbuf = (char *)malloc(32);
     
@@ -833,6 +848,64 @@ struct tokenizer *create_tokenizer(const char *file) {
 
     /* Store filename */
     tokenizer->filename = strdup_wrap(file);
+
+    /* Set mode to read from file */
+    tokenizer->mode = TK_MODE_FILE;
+
+    return tokenizer;
+}
+
+/**
+ * @function: create_string_tokenizer
+ * @purpose: Allocates and initializes the tokenizer structure 
+ * @param file -> Name of the file to read from
+ * @return Pointer to the allocated tokenizer structure
+ **/
+struct tokenizer *create_string_tokenizer(const char *file, const char *fstring, size_t fstrlen) {
+    /* Create the tokenizer struct */
+    struct tokenizer *tokenizer = (struct tokenizer *)malloc(sizeof(struct tokenizer));
+    
+    /* Failed to allocate space */
+    if(tokenizer == NULL) { return NULL; }
+
+    /* Set file ptr to NULL */
+    tokenizer->fstream = NULL;
+
+    /* Set C string to read from */
+    tokenizer->fstring = fstring;
+    tokenizer->fstrlen = fstrlen;
+    tokenizer->fstrpos = 0;
+
+    /* Create string buffer */
+    tokenizer->lexbuf = (char *)malloc(32);
+    
+    /* Failed to allocate space */
+    if(tokenizer->lexbuf == NULL) { 
+        fclose(tokenizer->fstream);
+        free(tokenizer);
+        return NULL; 
+    }
+
+    /* Set the buffer parameters */
+    tokenizer->bufsize = 32;
+    tokenizer->bufpos = 0;
+
+    /* Set the file parameters */
+    tokenizer->colno = 1;
+    tokenizer->lineno = 1;
+
+    /* Set the error mesage parameters */
+    tokenizer->errmsg = NULL;
+    tokenizer->errsize = 0;
+
+    /* Set NULL attribute */
+    tokenizer->attrptr = NULL;
+
+    /* Store filename */
+    tokenizer->filename = strdup_wrap(file);
+
+    /* Set mode to read from file */
+    tokenizer->mode = TK_MODE_STRING;
 
     return tokenizer;
 }

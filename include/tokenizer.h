@@ -54,6 +54,10 @@
 #define TOK_MACRO       0x0D
 #define TOK_MACRO_END   0x0E
 
+/* Tokenizer stream modes */
+#define TK_MODE_FILE    0x00
+#define TK_MODE_STRING  0x01
+
 /* Type definitions */
 typedef unsigned int token_t;
 
@@ -61,6 +65,7 @@ typedef unsigned int token_t;
 struct tokenizer {
     char*        filename;   /* Name of the file opened */
     FILE*        fstream;    /* Pointer to file used in lexical scanner */
+    const char*  fstring;    /* Pointer to C string used in lexical scanner (see mode) */
     char*        lexbuf;     /* Lexical buffer */
     char*        errmsg;     /* Error message buffer */
     union {                  /* Token attributes */
@@ -73,6 +78,9 @@ struct tokenizer {
     size_t       lineno;     /* Line number */
     size_t       colno;      /* Column number */
     size_t       errsize;    /* Error buffer physical size */
+    size_t       fstrlen;    /* Length of the C string used in lexical scanner */ 
+    size_t       fstrpos;    /* Current position of the C string used in lexical scanner */
+    char         mode;       /* Indicates type of tokenizer (read from file or c-string) */     
 };
 
 /* Reserved keywords table */
@@ -84,7 +92,8 @@ struct reserved_entry {
 };
 
 /* Function prototypes */
-struct tokenizer* create_tokenizer(const char*);
+struct tokenizer* create_tokenizer(const char *);
+struct tokenizer* create_string_tokenizer(const char *, const char *, size_t);
 token_t get_next_token(struct tokenizer*);
 void destroy_tokenizer(struct tokenizer**);
 
